@@ -1,6 +1,9 @@
 from memory import Memory
 import sys
 
+import dataclasses
+from typing import Callable
+
 
 """
 Code review of this before next week
@@ -26,13 +29,22 @@ class Processor:
         self.stack_pointer = 0
         self.cycles = 0
 
-        self.flag_c = True # Carry
-        self.flag_z = True # Zero
-        self.flag_i = True #
-        self.flag_d = True
-        self.flag_b = True
-        self.flag_v = True
-        self.flag_n = True
+        self.flag_c = True  # Carry
+        self.flag_z = True  # Zero
+        self.flag_i = True  # Interrupt disable
+        self.flag_d = True  # Decimal mode
+        self.flag_b = True  # Break
+        self.flag_v = True  # Overflow
+        self.flag_n = True  # Negative result
+
+        self.instruction_table = {
+            0x18: Instruction("CLC", Processor.ins_clc_imp, 1),
+            0x38: Instruction("SEC", Processor.ins_sec_imp, 1),
+            0xEA: Instruction("NOP", Processor.ins_nop_imp, 1),
+            0xAA: Instruction("TAX", Processor.ins_tax_imp, 1),
+            0xEA: Instruction("INX", Processor.ins_inx_imp, 1),
+            0xA9: Instruction("LDA", Processor.ins_lda_imm, 2)
+        }
 
     def reset(self) -> None:
 
@@ -100,7 +112,6 @@ class Processor:
         self.program_counter += 1
         return data
 
-
     def fetch_word(self) -> int:
         """Fetch a word from memory.
 
@@ -110,14 +121,26 @@ class Processor:
         data = self.read_word(self.program_counter)
         self.program_counter += 2
         return data
+    
+    def fetch_decode_execute(self):
+        opcode = self.fetch_byte()
+        instruction = self.decode(opcode)
+        self.execute(instruction)
 
-    def execute(self, cycles: int = 0) -> None:
+    def decode(self, opcode: int):
+        return self.instruction_table.get(opcode, None)
+
+    def execute(self, instruction: int = 0) -> None:
         """
         Execute code for X amount of cycles. Or until a breakpoint is reached.
 
         :param cycles: The number of cycles to execute
         :return: None
         """
+        instruction.execute(self)
+        self.cycles += instruction.cycles
+
+        '''
         while (self.cycles < cycles) or (cycles == 0):
             opcode = self.fetch_byte()
             # you have a multiway branch use a match expression
@@ -137,7 +160,7 @@ class Processor:
                 print("Unknown Opcode")
                 break
             ...
-
+        '''
 
 
     def ins_clc_imp(self) -> None:
@@ -197,3 +220,9 @@ class Processor:
         self.reg_a = self.fetch_byte()
         self.flag_z = (self.reg_a == 0)
         self.flag_n = (self.reg_a & 0x80) != 0
+
+@dataclass
+class Instruction:
+    name: str
+    execute: Callable
+    cycles: int

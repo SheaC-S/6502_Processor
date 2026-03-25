@@ -147,7 +147,7 @@ def test_cpu_ins_sec() -> None:
     cpu.flag_c = False
 
     memory[0xFCE2] = 0x38
-    cpu.execute(2)
+    cpu.fetch_decode_execute()
 
     assert (
             cpu.flag_c,
@@ -169,7 +169,7 @@ def test_cpu_ins_tax() -> None:
     cpu.reg_x = 0x00
 
     memory[0xFCE2] = 0xAA
-    cpu.execute(2)
+    cpu.fetch_decode_execute()
 
     assert (
             cpu.reg_x,
@@ -184,6 +184,10 @@ def test_cpu_ins_inx_standard() -> None:
 
     The cost is 2 cycles. It increments the X register by 1.
     """
+    # State in one data structure for desired output
+    # state in one data structure for sample input
+    # state in one data structure for actual output
+
     memory = Memory()
     cpu = Processor(memory)
     cpu.reset()
@@ -191,7 +195,7 @@ def test_cpu_ins_inx_standard() -> None:
     cpu.reg_x = 0x05
 
     memory[0xFCE2] = 0xE8
-    cpu.execute(2)
+    cpu.fetch_decode_execute()
 
     assert  (
             cpu.reg_x,
@@ -214,7 +218,7 @@ def test_cpu_ins_inx_overflow_and_flags() -> None:
     cpu.reg_x = 0xFF
 
     memory[0xFCE2] = 0xE8
-    cpu.execute(2)
+    cpu.fetch_decode_execute()
 
     assert (
         cpu.reg_x,
@@ -238,7 +242,7 @@ def test_cpu_ins_lda_imm() -> None:
     memory[0xFCE2] = 0xA9
     memory[0xFCE3] = 0x84
 
-    cpu.execute(2)
+    cpu.fetch_decode_execute()
 
     assert (
         cpu.reg_a,
@@ -248,4 +252,26 @@ def test_cpu_ins_lda_imm() -> None:
         cpu.program_counter
     ) == (0x84, True, False, 2, 0xFCE4)
 
+def test_cpu_ins_BLANK() -> None:
+    """Verify LDA instruction.
+
+    The cost is 2 cycles.
+    It loads the byte immediately following the opcode into
+    the Accumulator and updates flags.
+    """
+    memory = Memory()
+    cpu = Processor(memory)
+    cpu.reset()
+
+    memory[0xFCE2] = 0x88
+
+    cpu.fetch_decode_execute()
+
+    assert (
+        cpu.reg_a,
+        cpu.flag_n,
+        cpu.flag_z,
+        cpu.cycles,
+        cpu.program_counter
+    ) == (0x00, True, True, 2, 0xFCE3)
 

@@ -1,8 +1,8 @@
 from memory import Memory
+from instructions import instruction_table
 import sys
 
 from dataclasses import dataclass
-from typing import Callable
 
 
 """
@@ -13,12 +13,28 @@ Justify choices made in terms of the design / implementation of it so far -
     we can then discuss possible improvements next week 
 """
 
-@dataclass
-class Instruction:
-    name: str
-    execute: Callable
-    cycles: int
 
+
+@dataclass
+class ProcessorState:
+    reg_a: int
+    reg_b: int
+    reg_x: int
+    program_counter: int
+    stack_pointer: int
+    cycles: int
+    flag_c: bool  # Carry
+    flag_z: bool  # Zero
+    flag_i: bool  # Interrupt disable
+    flag_d: bool  # Decimal mode
+    flag_b: bool  # Break
+    flag_v: bool  # Overflow
+    flag_n: bool  # Negative result
+
+@dataclass
+class MachineState:
+    cpu: ProcessorState
+    memory: Memory
 """
 
 Data:
@@ -50,7 +66,6 @@ class NOP:
 
 '''
 
-
 class Processor:
     def __init__(proc : 'Processor', memory: Memory) -> None:
         """
@@ -58,8 +73,7 @@ class Processor:
 
         :return: none
         """
-        proc.memory = memory
-        proc.reg_a = 0
+        proc.reg_a = 0 # Accumulator
         proc.reg_b = 0
         proc.reg_x = 0
 
@@ -75,14 +89,7 @@ class Processor:
         proc.flag_v = True  # Overflow
         proc.flag_n = True  # Negative result
 
-        proc.instruction_table = {
-            0x18: Instruction("CLC", Processor.ins_clc_imp, 1),
-            0x38: Instruction("SEC", Processor.ins_sec_imp, 1),
-            0xEA: Instruction("NOP", Processor.ins_nop_imp, 1),
-            0xAA: Instruction("TAX", Processor.ins_tax_imp, 1),
-            0xE8: Instruction("INX", Processor.ins_inx_imp, 1),
-            0xA9: Instruction("LDA", Processor.ins_lda_imm, 0)
-        }
+        proc.instruction_table = instruction_table
 
     def reset(proc : 'Processor') -> None:
 
@@ -160,13 +167,15 @@ class Processor:
         proc.program_counter += 2
         return data
 
-    def fetch_decode_execute(proc : 'Processor') -> None:
+    def fetch_decode_execute(state : MachineState) -> None:
         opcode = proc.fetch_byte()
         instruction = proc.decode(opcode)
         proc.execute(instruction)
 
-    #@classmethod
-    def decode(proc : 'Processor', opcode: int) -> Instruction:
+    def decode(state : MachineState, opcode: int) -> Instruction:
+        proc = state.cpu
+        memory = state.memory
+
         try:
             ins  = proc.instruction_table.get(opcode, None)
             if ins == None:
@@ -206,59 +215,5 @@ class Processor:
                 break
             ...
         '''
-
-
-    def ins_clc_imp(proc : 'Processor') -> None:
-        """
-        CLC - Clear Carry Flag.
-
-        :return: None
-        """
-        proc.flag_c = False
-
-    def ins_sec_imp(proc : 'Processor') -> None:
-        """
-        SEC - Set Carry Flag.
-
-        :return: None
-        """
-        proc.flag_c = True
-
-    def ins_nop_imp(proc : 'Processor') -> None:
-        """
-        NOP - No Operation.
-
-        :return: None
-        """
-
-    def ins_tax_imp(proc : 'Processor') -> None:
-        """
-        TAX - Transfer Accumulator to X.
-
-        :return: None
-        """
-        proc.reg_x = proc.reg_a
-        proc.flag_z = (proc.reg_x == 0)
-        proc.flag_n = (proc.reg_x & 0x80) != 0
-
-    def ins_inx_imp(proc : 'Processor') -> None:
-        """
-        INX - Increment X Register.
-
-        :return: None
-        """
-        proc.reg_x = (proc.reg_x + 1) & 0xFF
-        proc.flag_z = (proc.reg_x == 0)
-        proc.flag_n = (proc.reg_x & 0x80) != 0
-
-    def ins_lda_imm(proc : 'Processor') -> None:
-        """
-        LDA - Load to Accumulator.
-
-        :return: None
-        """
-        proc.reg_a = proc.fetch_byte()
-        proc.flag_z = (proc.reg_a == 0)
-        proc.flag_n = (proc.reg_a & 0x80) != 0
 
 

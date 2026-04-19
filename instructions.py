@@ -16,8 +16,8 @@ def ins_clc_imp(state: MachineState) -> MachineState:
 
     :return: None
     """
-    proc: "Processor" = state.cpu
-    mem: "Memory" = state.memory
+    proc = state.cpu
+    mem = state.memory
 
     proc.flag_c = False
 
@@ -86,7 +86,7 @@ def ins_lda_imm(state: MachineState) -> MachineState:
     proc: "Processor" = state.cpu
     mem: "Memory" = state.memory
 
-    proc.reg_a = proc.fetch_byte()
+    proc.reg_a = proc.fetch_byte(mem)
     proc.flag_z = (proc.reg_a == 0)
     proc.flag_n = (proc.reg_a & 0x80) != 0
 

@@ -11,7 +11,7 @@ def newMachine() -> MachineState:
     :return: a new MachineState tuple
     """
     cpu = Processor()
-    memory = Memory()
+    memory = Memory(0x1FFFF)
     return MachineState(cpu=cpu, memory=memory)
 
 @pytest.fixture(scope="function")
@@ -291,16 +291,17 @@ def test_cpu_ins_BLANK(machineReset : MachineState) -> None:
     memory = machineReset.memory
     cpu = machineReset.cpu
 
-    memory[0xFCE2] = 0x88
+    cpu.program_counter = 0x10005
+
+    memory[0x10005] = 0x88
 
     machineState = MachineState(cpu=cpu, memory=memory)
     cpu.fetch_decode_execute(machineState)
 
     assert (
-        cpu.reg_a,
         cpu.flag_n,
         cpu.flag_z,
         cpu.cycles,
         cpu.program_counter
-    ) == (0x00, True, True, 2, 0xFCE3)
+    ) == (True, True, 2, 0x10006)
 

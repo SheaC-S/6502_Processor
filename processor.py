@@ -1,5 +1,6 @@
 from memory import Memory
-from instructions import instruction_table
+from instructions import instruction_table, Instruction
+from state import MachineState
 import sys
 
 from dataclasses import dataclass
@@ -31,10 +32,6 @@ class ProcessorState:
     flag_v: bool  # Overflow
     flag_n: bool  # Negative result
 
-@dataclass
-class MachineState:
-    cpu: ProcessorState
-    memory: Memory
 """
 
 Data:
@@ -168,21 +165,21 @@ class Processor:
         return data
 
     def fetch_decode_execute(state : MachineState) -> None:
+        proc: "Processor" = state.cpu
+        mem: "Memory" = state.memory
+
         opcode = proc.fetch_byte()
         instruction = proc.decode(opcode)
         proc.execute(instruction)
 
-    def decode(state : MachineState, opcode: int) -> Instruction:
-        proc = state.cpu
-        memory = state.memory
-
+    def decode(opcode : int) -> Instruction:
         try:
-            ins  = proc.instruction_table.get(opcode, None)
-            if ins == None:
-                raise ValueError(f"Unknown opcode: {opcode} at PC={proc.program_counter}. Running No Operation...")
+            instruction  = instruction_table.get(opcode, None)
+            if instruction == None:
+                raise ValueError(f"Unknown opcode. Running No Operation...")
         except ValueError:
-            return proc.instruction_table.get(0xEA)
-        return ins
+            return instruction_table.get(0xEA)
+        return instruction
 
     def execute(proc : 'Processor', instruction) -> None:
         """

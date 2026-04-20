@@ -1,11 +1,20 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable
 
 from state import MachineState
 
+class AddressMode(Enum):
+    IMPLIED = "IMPLIED"
+    IMMEDIATE = "IMMEDIATE"
+    ABSOLUTE = "ABSOLUTE"
+    ZERO_PAGE = "ZERO_PAGE"
+    RELATIVE = "RELATIVE"
+
 @dataclass
 class Instruction:
     name: str
+    mode: AddressMode
     execute: Callable
     cycles: int
     # pattern: str # For the string pattern which will be used for this instruction
@@ -93,10 +102,10 @@ def ins_lda_imm(state: MachineState) -> MachineState:
     return MachineState(proc, mem)
 
 instruction_table = {
-    0x18: Instruction("CLC", ins_clc_imp, 1),
-    0x38: Instruction("SEC", ins_sec_imp, 1),
-    0xEA: Instruction("NOP", ins_nop_imp, 1),
-    0xAA: Instruction("TAX", ins_tax_imp, 1),
-    0xE8: Instruction("INX", ins_inx_imp, 1),
-    0xA9: Instruction("LDA", ins_lda_imm, 0)
+    0x18: Instruction("CLC", AddressMode.IMPLIED, ins_clc_imp, 1),
+    0x38: Instruction("SEC", AddressMode.IMPLIED, ins_sec_imp, 1),
+    0xEA: Instruction("NOP", AddressMode.IMPLIED, ins_nop_imp, 1),
+    0xAA: Instruction("TAX", AddressMode.IMPLIED, ins_tax_imp, 1),
+    0xE8: Instruction("INX", AddressMode.IMPLIED, ins_inx_imp, 1),
+    0xA9: Instruction("LDA", AddressMode.IMMEDIATE, ins_lda_imm, 0)
 }

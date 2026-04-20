@@ -11,7 +11,7 @@ class Memory:
 
         mem.size = size
         mem.memory = [0] * mem.size
-        print(len(mem.memory))
+        # print(len(mem.memory))
 
         mem.is_banked = size > 0xFFFF
 
@@ -49,7 +49,7 @@ class Memory:
         :param address: The address to read from
         :return: The value at given address
         """
-        if 0x0000 < address or mem.size < address:
+        if 0x0000 > address or mem.size <= address:
             raise ValueError("Memory address is not valid")
 
         if mem.is_banked and address == mem.bank_register:
@@ -66,7 +66,7 @@ class Memory:
         :param value: The value ot write to the address
         :return: None
         """
-        if 0x0000 < address or mem.size < address:
+        if 0x0000 > address or mem.size <= address:
             raise ValueError("Memory address is not valid")
         if value.bit_length() > 8:
             raise ValueError("Value too large")

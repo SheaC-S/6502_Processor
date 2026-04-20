@@ -19,6 +19,7 @@ class IDE(QMainWindow):
         ide.memory = memory
         ide.state = MachineState(ide.processor, ide.memory)
         ide.is_running = False
+        ide.colour_phase = 0
 
         ide.setWindowTitle("6502 Virtual Console")
         ide.resize(900,600)
@@ -26,7 +27,7 @@ class IDE(QMainWindow):
         # Overall layout
         central_widget = QWidget()
         ide.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        main_layout = QHBoxLayout(central_widget)
 
         # Layout for editor
         editor_layout = QHBoxLayout()
@@ -56,15 +57,20 @@ class IDE(QMainWindow):
             source_code = ide.editor.toPlainText()
             print("Running...")
 
-            ide.cpu.reset()
+            ide.processor.reset()
             ide.is_running = True
             ide.run_button.setText("Stop")
             ide.timer.start(16)
 
     def emulator_tick(ide : 'ide') -> None:
         try:
-            for _ in range(1000):
-                ide.processor.fetch_decode_execute(ide.state)
+            '''for _ in range(1000):
+                ide.processor.fetch_decode_execute(ide.state)'''
+
+            ide.colour_phase = (ide.colour_phase + 1) % 256
+
+            end_vram = ide.vscreen.vmem_start + 76800
+            ide.memory.memory[ide.vscreen.vmem_start:end_vram] = [ide.colour_phase] * 76800
 
             ide.vscreen.render()
 
@@ -73,18 +79,5 @@ class IDE(QMainWindow):
             ide.timer.stop()
             ide.run_button.setText("Run")
 
-            print("\n" + "="*40)
             print("Crashed!")
-            print("="*40)
             traceback.print_exc()
-
-if __name__ == "__main__":
-    proc = Processor()
-    ram = Memory(size = 0x10000 * 2) # 64KB * 2
-    state = MachineState(proc, ram)
-
-    app = QApplication(sys.argv)
-    window = IDE(proc, ram)
-    window.show()
-
-    sys.exit(app.exec())

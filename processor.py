@@ -160,7 +160,8 @@ class Processor:
         :return: int
         """
         data = proc.read_byte(mem, proc.program_counter)
-        proc.program_counter += 1
+        # proc.program_counter += 1
+        proc.program_counter = (proc.program_counter + 1) % 0xFFFF
         return data
 
     def fetch_word(proc : 'Processor', mem : Memory) -> int:
@@ -170,7 +171,8 @@ class Processor:
         :return: int
         """
         data = proc.read_word(mem, proc.program_counter)
-        proc.program_counter += 2
+        # proc.program_counter += 2
+        proc.program_counter = (proc.program_counter + 2) % 0xFFFF
         return data
 
     def fetch_decode_execute(self, state : MachineState) -> None:

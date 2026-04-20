@@ -303,5 +303,5 @@ def test_cpu_ins_BLANK(machineReset : MachineState) -> None:
         cpu.flag_z,
         cpu.cycles,
         cpu.program_counter
-    ) == (True, True, 2, 0x10006)
+    ) == (True, True, 2, 7)
 

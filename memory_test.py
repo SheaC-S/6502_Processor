@@ -1,6 +1,34 @@
 import pytest
 from memory import Memory
 from processor import Processor
+from state import MachineState
+
+
+@pytest.fixture(scope="module")
+def newMachine() -> MachineState:
+    """Have a single machine to use for all tests, rather than just creating new ones each time.
+
+    :return: a new MachineState tuple
+    """
+    cpu = Processor()
+    memory = Memory(0x1FFFF)
+    return MachineState(cpu=cpu, memory=memory)
+
+@pytest.fixture(scope="function")
+def machineReset(newMachine : MachineState) -> MachineState:
+    """
+    :param state: The MachineState to use for testing
+
+    :return: a reset MachineState, ready for the next test
+    """
+    processor = newMachine.cpu
+    memory = newMachine.memory
+
+    processor.reset()
+    memory.memory = [0] * memory.size
+
+    return MachineState(cpu=processor, memory=memory)
+
 
 @pytest.mark.parametrize("i", range(0x0000, 0x0100))
 def test_write_zero_page(i: int) -> None:
@@ -38,7 +66,7 @@ def test_write_vector(i: int) -> None:
     memory[i] = 0xA5
     assert memory[i] == 0xA5
 
-def test_cpu_read_write_byte() -> None:
+def test_cpu_read_write_byte(machineReset : MachineState) -> None:
     """Verify CPU can read and write a byte from memory.
 
     The is 1 cycle each
@@ -46,11 +74,11 @@ def test_cpu_read_write_byte() -> None:
 
     :return: None
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
-    cpu.write_byte(0x0001, 0xA5)
-    value = cpu.read_byte(0x0001)
+    memory = machineReset.memory
+    cpu = machineReset.cpu
+
+    cpu.write_byte(memory,0x0001, 0xA5)
+    value = cpu.read_byte(memory,0x0001)
     assert (
                cpu.program_counter,
                cpu.stack_pointer,
@@ -61,7 +89,7 @@ def test_cpu_read_write_byte() -> None:
                value,
            ) == (0xFCE2, 0x01FD, 2, True, False, True, 0xA5)
 
-def test_cpu_read_write_word() -> None:
+def test_cpu_read_write_word(machineReset : MachineState) -> None:
     """Verify CPU can read and write a byte from memory.
 
     The cost is 2 cycles each.
@@ -69,11 +97,11 @@ def test_cpu_read_write_word() -> None:
 
     :return: None
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
-    cpu.write_word(0x0001, 0x5AA5)
-    value = cpu.read_word(0x0001)
+    memory = machineReset.memory
+    cpu = machineReset.cpu
+
+    cpu.write_word(memory,0x0001, 0x5AA5)
+    value = cpu.read_word(memory,0x0001)
     assert (
         cpu.program_counter,
         cpu.stack_pointer,
@@ -84,7 +112,7 @@ def test_cpu_read_write_word() -> None:
         value,
     ) == (0xFCE2, 0x01FD, 4, True, False, True, 0x5AA5)
 
-def test_cpu_fetch_byte() -> None:
+def test_cpu_fetch_byte(machineReset : MachineState) -> None:
     """Verify CPU can fetch a byte from memory.
 
     The cost is 1 cycle, and increases the program counter by 1.
@@ -92,11 +120,11 @@ def test_cpu_fetch_byte() -> None:
 
     :return: None
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    memory = machineReset.memory
+    cpu = machineReset.cpu
+
     memory[0xFCE2] = 0xA5
-    value = cpu.fetch_byte()
+    value = cpu.fetch_byte(memory)
     assert (
                cpu.program_counter,
                cpu.stack_pointer,
@@ -107,7 +135,7 @@ def test_cpu_fetch_byte() -> None:
                value,
            ) == (0xFCE3, 0x01FD, 1, True, False, True, 0xA5)
 
-def test_cpu_fetch_word() -> None:
+def test_cpu_fetch_word(machineReset : MachineState) -> None:
     """Verify CPU can fetch a word from memory.
 
     The cost is 2 cycles and increases the program counter by 2.
@@ -115,12 +143,12 @@ def test_cpu_fetch_word() -> None:
 
     :return: None
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    memory = machineReset.memory
+    cpu = machineReset.cpu
+
     memory[0xFCE2] = 0xA5
     memory[0xFCE3] = 0x5A
-    value = cpu.fetch_word()
+    value = cpu.fetch_word(memory)
     assert (
                cpu.program_counter,
                cpu.stack_pointer,
@@ -133,7 +161,7 @@ def test_cpu_fetch_word() -> None:
 
 
 
-def test_cpu_ins_sec() -> None:
+def test_cpu_ins_sec(machineReset : MachineState) -> None:
     """Verify SEC (Set Carry Flag) instruction.
 
     The cost is 2 cycles.
@@ -141,13 +169,14 @@ def test_cpu_ins_sec() -> None:
 
     :return: None
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    memory = machineReset.memory
+    cpu = machineReset.cpu
+
     cpu.flag_c = False
 
     memory[0xFCE2] = 0x38
-    cpu.execute(2)
+    machineState = MachineState(cpu=cpu, memory=memory)
+    cpu.fetch_decode_execute(machineState)
 
     assert (
             cpu.flag_c,
@@ -155,21 +184,21 @@ def test_cpu_ins_sec() -> None:
             cpu.program_counter
            ) == (True, 2, 0xFCE3)
 
-def test_cpu_ins_tax() -> None:
+def test_cpu_ins_tax(machineReset : MachineState) -> None:
     """Verify TAX (Transfer A to X) instruction.
 
     The cost is 2 cycles. It transfers the value of the Accumulator
     to the X register and updates the Zero and Negative flags.
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    memory = machineReset.memory
+    cpu = machineReset.cpu
 
     cpu.reg_a = 0x64
     cpu.reg_x = 0x00
 
     memory[0xFCE2] = 0xAA
-    cpu.execute(2)
+    machineState = MachineState(cpu=cpu, memory=memory)
+    cpu.fetch_decode_execute(machineState)
 
     assert (
             cpu.reg_x,
@@ -179,19 +208,23 @@ def test_cpu_ins_tax() -> None:
             cpu.program_counter
     ) == (0x64, False, False, 2, 0xFCE3)
 
-def test_cpu_ins_inx_standard() -> None:
+def test_cpu_ins_inx_standard(machineReset : MachineState) -> None:
     """Verify INX (Increment X) instruction standard operation.
 
     The cost is 2 cycles. It increments the X register by 1.
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    # State in one data structure for desired output
+    # state in one data structure for sample input
+    # state in one data structure for actual output
+
+    memory = machineReset.memory
+    cpu = machineReset.cpu
 
     cpu.reg_x = 0x05
 
     memory[0xFCE2] = 0xE8
-    cpu.execute(2)
+    machineState = MachineState(cpu=cpu, memory=memory)
+    cpu.fetch_decode_execute(machineState)
 
     assert  (
             cpu.reg_x,
@@ -201,20 +234,20 @@ def test_cpu_ins_inx_standard() -> None:
             cpu.program_counter
     ) == (0x06, False, False, 2, 0xFCE3)
 
-def test_cpu_ins_inx_overflow_and_flags() -> None:
+def test_cpu_ins_inx_overflow_and_flags(machineReset : MachineState) -> None:
     """Verify INX correctly wraps around at 255 and sets flags.
 
     When incrementing 255 (0xFF), it should wrap to 0x00 and trigger
     the Zero flag.
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    memory = machineReset.memory
+    cpu = machineReset.cpu
 
     cpu.reg_x = 0xFF
 
     memory[0xFCE2] = 0xE8
-    cpu.execute(2)
+    machineState = MachineState(cpu=cpu, memory=memory)
+    cpu.fetch_decode_execute(machineState)
 
     assert (
         cpu.reg_x,
@@ -224,21 +257,21 @@ def test_cpu_ins_inx_overflow_and_flags() -> None:
         cpu.program_counter
     ) == (0x00, True, False, 2, 0xFCE3)
 
-def test_cpu_ins_lda_imm() -> None:
+def test_cpu_ins_lda_imm(machineReset : MachineState) -> None:
     """Verify LDA instruction.
 
     The cost is 2 cycles.
     It loads the byte immediately following the opcode into
     the Accumulator and updates flags.
     """
-    memory = Memory()
-    cpu = Processor(memory)
-    cpu.reset()
+    memory = machineReset.memory
+    cpu = machineReset.cpu
 
     memory[0xFCE2] = 0xA9
     memory[0xFCE3] = 0x84
 
-    cpu.execute(2)
+    machineState = MachineState(cpu=cpu, memory=memory)
+    cpu.fetch_decode_execute(machineState)
 
     assert (
         cpu.reg_a,
@@ -248,4 +281,27 @@ def test_cpu_ins_lda_imm() -> None:
         cpu.program_counter
     ) == (0x84, True, False, 2, 0xFCE4)
 
+def test_cpu_ins_BLANK(machineReset : MachineState) -> None:
+    """Verify LDA instruction.
+
+    The cost is 2 cycles.
+    It loads the byte immediately following the opcode into
+    the Accumulator and updates flags.
+    """
+    memory = machineReset.memory
+    cpu = machineReset.cpu
+
+    cpu.program_counter = 0x10005
+
+    memory[0x10005] = 0x88
+
+    machineState = MachineState(cpu=cpu, memory=memory)
+    cpu.fetch_decode_execute(machineState)
+
+    assert (
+        cpu.flag_n,
+        cpu.flag_z,
+        cpu.cycles,
+        cpu.program_counter
+    ) == (True, True, 2, 0x10006)
 

@@ -1,8 +1,9 @@
 from memory import Memory
+from instructions import instruction_table, Instruction
+from state import MachineState
 import sys
 
-import dataclasses
-from typing import Callable
+from dataclasses import dataclass
 
 
 """
@@ -13,82 +14,132 @@ Justify choices made in terms of the design / implementation of it so far -
     we can then discuss possible improvements next week 
 """
 
+
+
+@dataclass
+class ProcessorState:
+    reg_a: int
+    reg_b: int
+    reg_x: int
+    program_counter: int
+    stack_pointer: int
+    cycles: int
+    flag_c: bool  # Carry
+    flag_z: bool  # Zero
+    flag_i: bool  # Interrupt disable
+    flag_d: bool  # Decimal mode
+    flag_b: bool  # Break
+    flag_v: bool  # Overflow
+    flag_n: bool  # Negative result
+
+"""
+
+Data:
+InstructionLabel X OpCode
+= {
+    (NOP, 
+}
+Behaviour:
+Execute: State -> State
+
+
+"""
+
+'''class InstructionEnum:
+    NOP =0x00
+
+
+    @staticmethod
+    def execute(instr:InstructionEnum, st:State) -> State:
+        match instr:
+            case 0x00:
+                NOP.execute()
+
+class NOP:
+        op_code = 0x00
+
+        @staticmethod
+        def execute(proc:Processor, mem:Memory) -> Tuple[Processor, Memory]:
+
+'''
+
 class Processor:
-    def __init__(self, memory: Memory) -> None:
+    def __init__(proc : 'Processor') -> None:
         """
         Initialise the processor
 
         :return: none
         """
-        self.memory = memory
-        self.reg_a = 0
-        self.reg_b = 0
-        self.reg_x = 0
+        proc.reg_a = 0 # Accumulator
+        proc.reg_b = 0
+        proc.reg_x = 0
 
-        self.program_counter = 0
-        self.stack_pointer = 0
-        self.cycles = 0
+        proc.program_counter = 0
+        proc.stack_pointer = 0
+        proc.cycles = 0
 
-        self.flag_c = True  # Carry
-        self.flag_z = True  # Zero
-        self.flag_i = True  # Interrupt disable
-        self.flag_d = True  # Decimal mode
-        self.flag_b = True  # Break
-        self.flag_v = True  # Overflow
-        self.flag_n = True  # Negative result
+        proc.flag_c = True  # Carry
+        proc.flag_z = True  # Zero
+        proc.flag_i = True  # Interrupt disable
+        proc.flag_d = False  # Decimal mode
+        proc.flag_b = True  # Break
+        proc.flag_v = True  # Overflow
+        proc.flag_n = True  # Negative result
 
-        self.instruction_table = {
-            0x18: Instruction("CLC", Processor.ins_clc_imp, 1),
-            0x38: Instruction("SEC", Processor.ins_sec_imp, 1),
-            0xEA: Instruction("NOP", Processor.ins_nop_imp, 1),
-            0xAA: Instruction("TAX", Processor.ins_tax_imp, 1),
-            0xEA: Instruction("INX", Processor.ins_inx_imp, 1),
-            0xA9: Instruction("LDA", Processor.ins_lda_imm, 2)
-        }
+        proc.instruction_table = instruction_table
 
-    def reset(self) -> None:
+    def reset(proc : 'Processor') -> None:
 
-        self.program_counter = 0xFCE2
-        self.stack_pointer = 0x01FD
-        self.cycles = 0
-        self.flag_i = True
-        self.flag_d = False
-        self.flag_b = True
+        proc.reg_a = 0
+        proc.reg_b = 0
+        proc.reg_x = 0
 
-    def read_byte(self, address: int) -> int:
+        proc.program_counter = 0xFCE2
+        proc.stack_pointer = 0x01FD
+        proc.cycles = 0
+
+        proc.flag_c = True
+        proc.flag_z = True
+        proc.flag_i = True
+        proc.flag_d = False
+        proc.flag_b = True
+        proc.flag_v = True
+        proc.flag_n = True
+
+    def read_byte(proc : 'Processor', mem : Memory, address: int) -> int:
         """Read a byte from memory.
 
         :param address: The address to read from
         :return: int
         """
-        data = self.memory[address]
-        self.cycles += 1
+        data = mem.memory[address]
+        proc.cycles += 1
         return data
 
-    def write_byte(self, address: int, value: int) -> None:
+    def write_byte(proc : 'Processor', mem : Memory, address: int, value: int) -> None:
         """Write a byte to memory.
 
         :param address: The address to write to
         :param value: The value to write
         :return: None
         """
-        self.memory[address] = value
-        self.cycles += 1
+        mem.memory[address] = value
+        proc.cycles += 1
 
-    def read_word(self, address: int) -> int:
+    def read_word(proc : 'Processor', mem : Memory, address: int) -> int:
         """Read a word from memory.
 
         :param address: The address to read from
         :return: int
         """
         if sys.byteorder == "little":
-            data = self.read_byte(address) | (self.read_byte(address + 1) << 8)
+            data = proc.read_byte(mem, address) | (proc.read_byte(mem, address + 1) << 8)
         else:
-            data = (self.read_byte(address) << 8) | self.read_byte(address + 1)
+            data = (proc.read_byte(mem, address) << 8) | proc.read_byte(mem, address + 1)
         return data
 
 
-    def write_word(self, address: int, value: int) -> None:
+    def write_word(proc : 'Processor', mem : Memory, address: int, value: int) -> None:
         """Split a word to two bytes and write to memory.
 
         :param address: The address to write to
@@ -96,133 +147,57 @@ class Processor:
         :return: None
         """
         if sys.byteorder == "little":
-            self.write_byte(address, value & 0xFF)
-            self.write_byte(address + 1, (value >> 8) & 0xFF)
+            proc.write_byte(mem, address, value & 0xFF)
+            proc.write_byte(mem, address + 1, (value >> 8) & 0xFF)
         else:
-            self.write_byte(address, (value >> 8) & 0xFF)
-            self.write_byte(address + 1, value & 0xFF)
+            proc.write_byte(mem, address, (value >> 8) & 0xFF)
+            proc.write_byte(mem, address + 1, value & 0xFF)
 
-    def fetch_byte(self) -> int:
+    def fetch_byte(proc : 'Processor', mem : Memory) -> int:
         """Fetch a byte from memory.
 
         :param address: The address to read from
         :return: int
         """
-        data = self.read_byte(self.program_counter)
-        self.program_counter += 1
+        data = proc.read_byte(mem, proc.program_counter)
+        proc.program_counter += 1
         return data
 
-    def fetch_word(self) -> int:
+    def fetch_word(proc : 'Processor', mem : Memory) -> int:
         """Fetch a word from memory.
 
         :param address: The address to read from
         :return: int
         """
-        data = self.read_word(self.program_counter)
-        self.program_counter += 2
+        data = proc.read_word(mem, proc.program_counter)
+        proc.program_counter += 2
         return data
-    
-    def fetch_decode_execute(self):
-        opcode = self.fetch_byte()
-        instruction = self.decode(opcode)
-        self.execute(instruction)
 
-    def decode(self, opcode: int):
-        return self.instruction_table.get(opcode, None)
+    def fetch_decode_execute(self, state : MachineState) -> None:
+        proc: "Processor" = state.cpu
+        mem: "Memory" = state.memory
 
-    def execute(self, instruction: int = 0) -> None:
+        opcode = proc.fetch_byte(mem)
+        instruction = proc.decode(opcode)
+        proc.execute(state, instruction)
+
+    def decode(proc: 'Processor', opcode : int) -> Instruction:
+        try:
+            instruction  = instruction_table.get(opcode, None)
+            if instruction == None:
+                raise ValueError(f"Unknown opcode. Running No Operation...")
+        except ValueError:
+            return instruction_table.get(0xEA)
+        return instruction
+
+    def execute(proc : 'Processor', state: MachineState, instruction) -> None:
         """
         Execute code for X amount of cycles. Or until a breakpoint is reached.
 
         :param cycles: The number of cycles to execute
         :return: None
         """
-        instruction.execute(self)
-        self.cycles += instruction.cycles
-
-        '''
-        while (self.cycles < cycles) or (cycles == 0):
-            opcode = self.fetch_byte()
-            # you have a multiway branch use a match expression
-            if opcode == 0x18:
-                self.ins_clc_imp()  # Clear carry flag
-            elif opcode == 0x38:
-                self.ins_sec_imp()  # Set carry flag
-            elif opcode == 0xEA:
-                self.ins_nop_imp()  # No operation
-            elif opcode == 0xAA:
-                self.ins_tax_imp()  # Transfer ACC to reg X
-            elif opcode == 0xE8:
-                self.ins_inx_imp()  # Increment reg X
-            elif opcode == 0xA9:
-                self.ins_lda_imm()  # Load value to ACC
-            else:
-                print("Unknown Opcode")
-                break
-            ...
-        '''
+        state = instruction.execute(state)
+        state.cpu.cycles += instruction.cycles
 
 
-    def ins_clc_imp(self) -> None:
-        """
-        CLC - Clear Carry Flag.
-
-        :return: None
-        """
-        self.flag_c = False
-        self.cycles += 1
-
-    def ins_sec_imp(self) -> None:
-        """
-        SEC - Set Carry Flag.
-
-        :return: None
-        """
-        self.flag_c = True
-        self.cycles += 1
-
-    def ins_nop_imp(self) -> None:
-        """
-        NOP - No Operation.
-
-        :return: None
-        """
-        self.cycles += 1
-
-    def ins_tax_imp(self) -> None:
-        """
-        TAX - Transfer Accumulator to X.
-
-        :return: None
-        """
-        self.reg_x = self.reg_a
-        self.flag_z = (self.reg_x == 0)
-        self.flag_n = (self.reg_x & 0x80) != 0
-        self.cycles += 1
-
-    def ins_inx_imp(self) -> None:
-        """
-        INX - Increment X Register.
-
-        :return: None
-        """
-        self.reg_x = (self.reg_x + 1) & 0xFF
-        self.flag_z = (self.reg_x == 0)
-        self.flag_n = (self.reg_x & 0x80) != 0
-        self.cycles += 1
-
-    def ins_lda_imm(self) -> None:
-        """
-        LDA - Load to Accumulator.
-
-        :return: None
-        """
-        self.reg_a = self.fetch_byte()
-        self.flag_z = (self.reg_a == 0)
-        self.flag_n = (self.reg_a & 0x80) != 0
-
-@dataclass
-class Instruction:
-    name: str
-    execute: Callable
-    cycles: int

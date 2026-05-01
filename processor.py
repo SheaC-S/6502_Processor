@@ -94,7 +94,7 @@ class Processor:
         proc.reg_b = 0
         proc.reg_x = 0
 
-        proc.program_counter = 0xFCE2
+        proc.program_counter = 0xBCE2
         proc.stack_pointer = 0x01FD
         proc.cycles = 0
 
@@ -112,7 +112,7 @@ class Processor:
         :param address: The address to read from
         :return: int
         """
-        data = mem.memory[address]
+        data = mem[address]
         proc.cycles += 1
         return data
 
@@ -123,7 +123,7 @@ class Processor:
         :param value: The value to write
         :return: None
         """
-        mem.memory[address] = value
+        mem[address] = value
         proc.cycles += 1
 
     def read_word(proc : 'Processor', mem : Memory, address: int) -> int:
@@ -161,7 +161,7 @@ class Processor:
         """
         data = proc.read_byte(mem, proc.program_counter)
         # proc.program_counter += 1
-        proc.program_counter = (proc.program_counter + 1) % 0xFFFF
+        proc.program_counter = (proc.program_counter + 1) % 0x10000
         return data
 
     def fetch_word(proc : 'Processor', mem : Memory) -> int:
@@ -172,7 +172,7 @@ class Processor:
         """
         data = proc.read_word(mem, proc.program_counter)
         # proc.program_counter += 2
-        proc.program_counter = (proc.program_counter + 2) % 0xFFFF
+        proc.program_counter = (proc.program_counter + 2) % 0x10000
         return data
 
     def fetch_decode_execute(self, state : MachineState) -> None:

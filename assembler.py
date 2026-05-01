@@ -11,7 +11,7 @@ class Assembler:
             key = (instruction.name, instruction.mode)
             assembler.opcodes[key] = opcode_hex
 
-
+            print(assembler.opcodes)
 
     def compile(assembler : 'Assembler', source_code : str) -> list[int]:
         machine_code : list[int] = []
@@ -19,7 +19,7 @@ class Assembler:
 
         for line_num, line in enumerate(lines, start = 1):
             original_line = line.strip()
-            line = line.strip(';')[0].strip()
+            line = line.split(';')[0].strip()
             if not line:
                 continue
 
@@ -34,6 +34,7 @@ class Assembler:
 
             else:
                 operand = parts[1]
+                print(parts)
 
                 if operand.startswith('#$'):
                     # Immediate
@@ -52,16 +53,24 @@ class Assembler:
                     machine_code.append(opcode)
                     machine_code.append(value)
 
-                elif operand.startswith('$') and len(operand) == 5:
-                    ## Absolute
-                    opcode = assembler.opcodes.get((mnemonic, AddressMode.ABSOLUTE))
-                    if opcode is None:
-                        raise SyntaxError(f"Line {line_num}: Doesn't support absolute addressing")
+
+                elif operand.startswith('$'):
 
                     try:
                         address = int(operand[1:], 16)
                     except ValueError:
                         raise SyntaxError(f"Line {line_num}: Invalid hex value")
+
+                    if address <= 0xFF:
+                        opcode = assembler.opcodes.get((mnemonic, AddressMode.ZERO_PAGE))
+                        if opcode is not None:
+                            machine_code.append(opcode)
+                            machine_code.append(address)
+                            continue
+
+                    opcode = assembler.opcodes.get((mnemonic, AddressMode.ABSOLUTE))
+                    if opcode is None:
+                        raise SyntaxError(f"Line {line_num}: Instruction doesn't support this memory addressing mode")
 
                     low_byte = address & 0xFF
                     high_byte = (address >> 8) & 0xFF

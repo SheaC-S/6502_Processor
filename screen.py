@@ -1,3 +1,4 @@
+import PyQt6
 from PyQt6.QtGui import QColor, QImage, QPixmap
 
 from memory import Memory
@@ -14,10 +15,12 @@ class Screen(QLabel):
 
         screen.width = 320
         screen.height = 240
+        screen.scale_factor = 2
         screen.vmem_start = vmem_start
         screen.memory = memory
 
-        screen.setFixedSize(screen.width, screen.height)
+        screen.setFixedSize(screen.width * screen.scale_factor,
+                            screen.height * screen.scale_factor)
         screen.setStyleSheet("background-color: black; border: 2px solid #444;")
 
     def colour_decode(screen : 'Screen', byte : int) -> QColor:
@@ -48,4 +51,11 @@ class Screen(QLabel):
 
                 mem_index += 1
 
-        screen.setPixmap(QPixmap.fromImage(image))
+        pixmap = QPixmap.fromImage(image).scaled(
+            screen.width * screen.scale_factor,
+            screen.height * screen.scale_factor,
+            PyQt6.QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+            PyQt6.QtCore.Qt.TransformationMode.FastTransformation,
+        )
+
+        screen.setPixmap(pixmap)

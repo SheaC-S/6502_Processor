@@ -87,7 +87,7 @@ def test_cpu_read_write_byte(machineReset : MachineState) -> None:
                cpu.flag_d,
                cpu.flag_i,
                value,
-           ) == (0xFCE2, 0x01FD, 2, True, False, True, 0xA5)
+           ) == (0xBCE2, 0x01FD, 2, True, False, True, 0xA5)
 
 def test_cpu_read_write_word(machineReset : MachineState) -> None:
     """Verify CPU can read and write a byte from memory.
@@ -110,7 +110,7 @@ def test_cpu_read_write_word(machineReset : MachineState) -> None:
         cpu.flag_d,
         cpu.flag_i,
         value,
-    ) == (0xFCE2, 0x01FD, 4, True, False, True, 0x5AA5)
+    ) == (0xBCE2, 0x01FD, 4, True, False, True, 0x5AA5)
 
 def test_cpu_fetch_byte(machineReset : MachineState) -> None:
     """Verify CPU can fetch a byte from memory.
@@ -123,7 +123,7 @@ def test_cpu_fetch_byte(machineReset : MachineState) -> None:
     memory = machineReset.memory
     cpu = machineReset.cpu
 
-    memory[0xFCE2] = 0xA5
+    memory[0xBCE2] = 0xA5
     value = cpu.fetch_byte(memory)
     assert (
                cpu.program_counter,
@@ -133,7 +133,7 @@ def test_cpu_fetch_byte(machineReset : MachineState) -> None:
                cpu.flag_d,
                cpu.flag_i,
                value,
-           ) == (0xFCE3, 0x01FD, 1, True, False, True, 0xA5)
+           ) == (0xBCE3, 0x01FD, 1, True, False, True, 0xA5)
 
 def test_cpu_fetch_word(machineReset : MachineState) -> None:
     """Verify CPU can fetch a word from memory.
@@ -146,8 +146,8 @@ def test_cpu_fetch_word(machineReset : MachineState) -> None:
     memory = machineReset.memory
     cpu = machineReset.cpu
 
-    memory[0xFCE2] = 0xA5
-    memory[0xFCE3] = 0x5A
+    memory[0xBCE2] = 0xA5
+    memory[0xBCE3] = 0x5A
     value = cpu.fetch_word(memory)
     assert (
                cpu.program_counter,
@@ -157,7 +157,7 @@ def test_cpu_fetch_word(machineReset : MachineState) -> None:
                cpu.flag_d,
                cpu.flag_i,
                value,
-           ) == (0xFCE4, 0x01FD, 2, True, False, True, 0x5AA5)
+           ) == (0xBCE4, 0x01FD, 2, True, False, True, 0x5AA5)
 
 
 
@@ -174,7 +174,7 @@ def test_cpu_ins_sec(machineReset : MachineState) -> None:
 
     cpu.flag_c = False
 
-    memory[0xFCE2] = 0x38
+    memory[0xBCE2] = 0x38
     machineState = MachineState(cpu=cpu, memory=memory)
     cpu.fetch_decode_execute(machineState)
 
@@ -182,7 +182,7 @@ def test_cpu_ins_sec(machineReset : MachineState) -> None:
             cpu.flag_c,
             cpu.cycles,
             cpu.program_counter
-           ) == (True, 2, 0xFCE3)
+           ) == (True, 2, 0xBCE3)
 
 def test_cpu_ins_tax(machineReset : MachineState) -> None:
     """Verify TAX (Transfer A to X) instruction.
@@ -196,7 +196,7 @@ def test_cpu_ins_tax(machineReset : MachineState) -> None:
     cpu.reg_a = 0x64
     cpu.reg_x = 0x00
 
-    memory[0xFCE2] = 0xAA
+    memory[0xBCE2] = 0xAA
     machineState = MachineState(cpu=cpu, memory=memory)
     cpu.fetch_decode_execute(machineState)
 
@@ -206,7 +206,7 @@ def test_cpu_ins_tax(machineReset : MachineState) -> None:
             cpu.flag_n,
             cpu.cycles,
             cpu.program_counter
-    ) == (0x64, False, False, 2, 0xFCE3)
+    ) == (0x64, False, False, 2, 0xBCE3)
 
 def test_cpu_ins_inx_standard(machineReset : MachineState) -> None:
     """Verify INX (Increment X) instruction standard operation.
@@ -222,7 +222,7 @@ def test_cpu_ins_inx_standard(machineReset : MachineState) -> None:
 
     cpu.reg_x = 0x05
 
-    memory[0xFCE2] = 0xE8
+    memory[0xBCE2] = 0xE8
     machineState = MachineState(cpu=cpu, memory=memory)
     cpu.fetch_decode_execute(machineState)
 
@@ -232,7 +232,7 @@ def test_cpu_ins_inx_standard(machineReset : MachineState) -> None:
             cpu.flag_n,
             cpu.cycles,
             cpu.program_counter
-    ) == (0x06, False, False, 2, 0xFCE3)
+    ) == (0x06, False, False, 2, 0xBCE3)
 
 def test_cpu_ins_inx_overflow_and_flags(machineReset : MachineState) -> None:
     """Verify INX correctly wraps around at 255 and sets flags.
@@ -245,7 +245,7 @@ def test_cpu_ins_inx_overflow_and_flags(machineReset : MachineState) -> None:
 
     cpu.reg_x = 0xFF
 
-    memory[0xFCE2] = 0xE8
+    memory[0xBCE2] = 0xE8
     machineState = MachineState(cpu=cpu, memory=memory)
     cpu.fetch_decode_execute(machineState)
 
@@ -255,7 +255,7 @@ def test_cpu_ins_inx_overflow_and_flags(machineReset : MachineState) -> None:
         cpu.flag_n,
         cpu.cycles,
         cpu.program_counter
-    ) == (0x00, True, False, 2, 0xFCE3)
+    ) == (0x00, True, False, 2, 0xBCE3)
 
 def test_cpu_ins_lda_imm(machineReset : MachineState) -> None:
     """Verify LDA instruction.
@@ -267,8 +267,8 @@ def test_cpu_ins_lda_imm(machineReset : MachineState) -> None:
     memory = machineReset.memory
     cpu = machineReset.cpu
 
-    memory[0xFCE2] = 0xA9
-    memory[0xFCE3] = 0x84
+    memory[0xBCE2] = 0xA9
+    memory[0xBCE3] = 0x84
 
     machineState = MachineState(cpu=cpu, memory=memory)
     cpu.fetch_decode_execute(machineState)
@@ -279,29 +279,5 @@ def test_cpu_ins_lda_imm(machineReset : MachineState) -> None:
         cpu.flag_z,
         cpu.cycles,
         cpu.program_counter
-    ) == (0x84, True, False, 2, 0xFCE4)
-
-def test_cpu_ins_BLANK(machineReset : MachineState) -> None:
-    """Verify LDA instruction.
-
-    The cost is 2 cycles.
-    It loads the byte immediately following the opcode into
-    the Accumulator and updates flags.
-    """
-    memory = machineReset.memory
-    cpu = machineReset.cpu
-
-    cpu.program_counter = 0x10005
-
-    memory[0x10005] = 0x88
-
-    machineState = MachineState(cpu=cpu, memory=memory)
-    cpu.fetch_decode_execute(machineState)
-
-    assert (
-        cpu.flag_n,
-        cpu.flag_z,
-        cpu.cycles,
-        cpu.program_counter
-    ) == (True, True, 2, 7)
+    ) == (0x84, True, False, 2, 0xBCE4)
 

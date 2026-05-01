@@ -88,7 +88,24 @@ def ins_inx_imp(state: MachineState) -> MachineState:
 
 def ins_lda_imm(state: MachineState) -> MachineState:
     """
-    LDA - Load to Accumulator.
+    LDA - Load to Accumulator
+    #$ - Immediate
+
+    :return: None
+    """
+    proc: "Processor" = state.cpu
+    mem: "Memory" = state.memory
+
+    proc.reg_a = proc.fetch_byte(mem)
+    proc.flag_z = (proc.reg_a == 0)
+    proc.flag_n = (proc.reg_a & 0x80) != 0
+
+    return MachineState(proc, mem)
+
+def ins_lda_abs(state: MachineState) -> MachineState:
+    """
+    LDA - Load to Accumulator
+    $ - Absolute
 
     :return: None
     """
@@ -107,5 +124,6 @@ instruction_table = {
     0xEA: Instruction("NOP", AddressMode.IMPLIED, ins_nop_imp, 1),
     0xAA: Instruction("TAX", AddressMode.IMPLIED, ins_tax_imp, 1),
     0xE8: Instruction("INX", AddressMode.IMPLIED, ins_inx_imp, 1),
-    0xA9: Instruction("LDA", AddressMode.IMMEDIATE, ins_lda_imm, 0)
+    0xA9: Instruction("LDA", AddressMode.IMMEDIATE, ins_lda_imm, 0),
+    0xAD: Instruction("LDA", AddressMode.ABSOLUTE, ins_lda_imm, 0)
 }

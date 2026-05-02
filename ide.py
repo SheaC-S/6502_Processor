@@ -1,6 +1,4 @@
-import traceback
-from pickle import EXT2
-from turtledemo.sorting_animate import Block
+import copy
 
 from PyQt6.QtCore import QTimer, QSize, Qt, QRegularExpression
 from PyQt6.QtGui import QFont, QPalette, QSyntaxHighlighter, QTextCharFormat, QColor, QIcon
@@ -121,6 +119,7 @@ class IDE(QMainWindow):
 
         ide.timer = QTimer()
         ide.timer.timeout.connect(ide.emulator_tick)
+        ide.log_to_console("Welcome to the 6502 console emulator!")
 
     def toggle_registers(ide : 'ide') -> None:
         is_visible = ide.register_panel.isVisible()
@@ -132,7 +131,7 @@ class IDE(QMainWindow):
     def update_register_display(ide : 'ide') -> None:
         processor = ide.processor
 
-        print("Hello world!")
+        # print("Hello world!")
 
         ide.label_program_counter.setText(f"Program Counter: ${processor.program_counter:04X}")
         ide.label_stack_pointer.setText(f"SP: ${processor.stack_pointer:02X}")
@@ -151,6 +150,13 @@ class IDE(QMainWindow):
     def log_to_console(ide: 'IDE', message: str) -> None:
         ide.console_output.appendPlainText(message)
 
+    def save_state_snapshot(ide : 'ide') -> None:
+        if len(ide.state_stack) > 500:
+            ide.state_stack.pop(0)
+
+        saved_state = copy.deepcopy(ide.state)
+        ide.state_stack.append(saved_state)
+
     def load_code(ide : 'ide') -> None:
         if ide.is_running:
             ide.is_running = False
@@ -167,14 +173,18 @@ class IDE(QMainWindow):
                 vmem_start = ide.vscreen.vmem_start
                 vmem_size = ide.vscreen.width * ide.vscreen.height
                 ide.memory.memory[vmem_start: vmem_start + vmem_size] = [0b00000000] * vmem_size
+                ide.processor.reset()
 
                 machine_code = ide.assembler.compile(source_code)
 
-                start_address = 0xBCE2
+                start_address = ide.processor.program_counter
                 for i, byte in enumerate(machine_code):
                     ide.memory[start_address + i] = byte
 
                 ide.log_to_console(f"Success! Loaded {len(machine_code)} bytes into memory.")
+
+                if ide.register_panel.isVisible():
+                    ide.update_register_display()
 
             except Exception as e:
                 ide.is_running = False
@@ -191,7 +201,6 @@ class IDE(QMainWindow):
             print("Running...")
 
             try:
-                ide.processor.reset()
                 ide.is_running = True
                 ide.run_button.setText("Stop")
                 ide.timer.start(16)
@@ -218,20 +227,29 @@ class IDE(QMainWindow):
             ide.log_to_console(f"ERROR: {str(e)}")
 
     def step_backward(ide : 'ide') -> None:
+
         if ide.is_running:
             ide.log_to_console("Pause the execution first!")
             return
 
-        try:
-            ide.processor.fetch_decode_execute(ide.state)
+        if not ide.state_stack:
+            ide.log_to_console("No previous state to step back to!")
+            return
 
-            if ide.register_panel.isVisible():
-                ide.update_register_display()
+        old_state = ide.state_stack.pop()
 
-            ide.vscreen.render()
+        ide.state = old_state
+        ide.processor = old_state.processor
+        ide.memory = old_state.memory
 
-        except Exception as e:
-            ide.log_to_console(f"ERROR: {str(e)}")
+        ide.vscreen.memory = old_state.memory
+
+        if ide.register_panel.isVisible():
+            ide.update_register_display()
+
+        ide.vscreen.render()
+        ide.log_to_console(f"Step back to: {len(ide.state_stack)}")
+
 
     def emulator_tick(ide : 'ide') -> None:
         try:
@@ -330,6 +348,22 @@ class CodeEditor(PyQt6.QtWidgets.QPlainTextEdit):
             painter.setPen(splitter_pen)
             painter.drawLine(editor.lineNumberArea.width() - 1, event.rect().top(),
                              editor.lineNumberArea.width() - 1, event.rect().bottom())
+
+    def SetActiveLine(editor : 'CodeEditor', lineNumber: int) -> None:
+        selection = PyQt6.QtWidgets.QTextEdit.extraSelections()
+
+        line_colour = PyQt6.QtGui.QColor("#333344")
+        selection.format.setBackground(line_colour)
+        selection.format.setProperty(PyQt6.QtGui.QTextFormat.Property.FullWidthSelection, True)
+
+        cursor = editor.textCursor()
+        cursor.setPosition(editor.document().findBlockByNumber(lineNumber).position())
+        selection.cursor = cursor
+
+        editor.setExtraSelections([selection])
+
+    def ClearActiveLine(editor : 'CodeEditor') -> None:
+        editor.setExtraSelections([])
 
 class LineNumberArea(PyQt6.QtWidgets.QWidget):
 

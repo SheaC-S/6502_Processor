@@ -19,6 +19,38 @@ class Instruction:
     cycles: int
     # pattern: str # For the string pattern which will be used for this instruction
 
+"""
+##########################################
+ADC - Add Memory to Accumulator with Carry
+##########################################
+"""
+
+def ins_adc_imm(state: MachineState) -> MachineState:
+    """
+    ADC - Add Memory to Accumulator with Carry
+
+    :param state: Current MachineState of the console
+    :return: Modified MachineState
+    """
+    proc = state.cpu
+    mem = state.memory
+
+    value = proc.fetch_byte(mem)
+    carry = int(proc.flag_c)
+
+    result = proc.reg_a + value + carry
+
+    proc.flag_c = result > 0xFF
+
+    proc.flag_v = bool((proc.reg_a ^ result) & (value ^ result) & 0x80)
+
+    proc.reg_a = result & 0xFF
+
+    proc.flag_z = (proc.reg_a == 0)
+    proc.flag_n = (proc.reg_a & 0x80) != 0
+
+    return MachineState(proc, mem)
+
 def ins_clc_imp(state: MachineState) -> MachineState:
     """
     CLC - Clear Carry Flag.
@@ -42,6 +74,37 @@ def ins_sec_imp(state: MachineState) -> MachineState:
     mem: "Memory" = state.memory
 
     proc.flag_c = True
+
+    return MachineState(proc, mem)
+
+def ins_sta_zp(state: MachineState) -> MachineState:
+    """
+    STA - Store Accumulator (Zero Page)
+
+    :param state: Current MachineState of the console
+    :return: Modified MachineState
+    """
+    proc: "Processor" = state.cpu
+    mem: "Memory" = state.memory
+
+    address = proc.fetch_byte(mem)
+    proc.write_byte(mem, address, proc.reg_a)
+
+    return MachineState(proc, mem)
+
+def ins_sta_abs(state: MachineState) -> MachineState:
+    """
+    STA - Store Accumulator
+    $ - Absolute
+
+    :param state: Current MachineState of the console
+    :return: Modified MachineState
+    """
+    proc: "Processor" = state.cpu
+    mem: "Memory" = state.memory
+
+    address = proc.fetch_word(mem)
+    proc.write_byte(mem, address, proc.reg_a)
 
     return MachineState(proc, mem)
 
@@ -71,6 +134,12 @@ def ins_tax_imp(state: MachineState) -> MachineState:
 
     return MachineState(proc, mem)
 
+"""
+##################################
+INX - Increment Index X by One
+##################################
+"""
+
 def ins_inx_imp(state: MachineState) -> MachineState:
     """
     INX - Increment X Register.
@@ -85,6 +154,12 @@ def ins_inx_imp(state: MachineState) -> MachineState:
     proc.flag_n = (proc.reg_x & 0x80) != 0
 
     return MachineState(proc, mem)
+
+"""
+##################################
+LDA - Load Accumulator with Memory
+##################################
+"""
 
 def ins_lda_imm(state: MachineState) -> MachineState:
     """
@@ -112,18 +187,23 @@ def ins_lda_abs(state: MachineState) -> MachineState:
     proc: "Processor" = state.cpu
     mem: "Memory" = state.memory
 
-    proc.reg_a = proc.fetch_byte(mem)
+    address = proc.fetch_byte(mem)
+    proc.reg_a = proc.read_byte(mem, address)
     proc.flag_z = (proc.reg_a == 0)
     proc.flag_n = (proc.reg_a & 0x80) != 0
 
     return MachineState(proc, mem)
 
 instruction_table = {
+    0x69: Instruction("ADC", AddressMode.IMMEDIATE, ins_adc_imm, 2),
     0x18: Instruction("CLC", AddressMode.IMPLIED, ins_clc_imp, 1),
     0x38: Instruction("SEC", AddressMode.IMPLIED, ins_sec_imp, 1),
     0xEA: Instruction("NOP", AddressMode.IMPLIED, ins_nop_imp, 1),
     0xAA: Instruction("TAX", AddressMode.IMPLIED, ins_tax_imp, 1),
     0xE8: Instruction("INX", AddressMode.IMPLIED, ins_inx_imp, 1),
     0xA9: Instruction("LDA", AddressMode.IMMEDIATE, ins_lda_imm, 0),
-    0xAD: Instruction("LDA", AddressMode.ABSOLUTE, ins_lda_imm, 0)
+    0xAD: Instruction("LDA", AddressMode.ABSOLUTE, ins_lda_imm, 1),
+    0x85: Instruction("STA", AddressMode.ZERO_PAGE, ins_sta_zp, 3),
+    0x8D: Instruction("STA", AddressMode.ABSOLUTE, ins_sta_abs, 4),
+
 }

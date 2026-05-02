@@ -11,7 +11,7 @@ class Assembler:
             key = (instruction.name, instruction.mode)
             assembler.opcodes[key] = opcode_hex
 
-            print(assembler.opcodes)
+            # print(assembler.opcodes)
 
     def compile(assembler : 'Assembler', source_code : str) -> list[int]:
         machine_code : list[int] = []
@@ -27,6 +27,7 @@ class Assembler:
             mnemonic = parts[0]
 
             if len(parts) == 1:
+                # Implied
                 opcode = assembler.opcodes.get((mnemonic, AddressMode.IMPLIED))
                 if opcode is None:
                     raise SyntaxError(f"Line {line_num}: Unknown instruction")
@@ -34,7 +35,7 @@ class Assembler:
 
             else:
                 operand = parts[1]
-                print(parts)
+                # print(parts)
 
                 if operand.startswith('#$'):
                     # Immediate
@@ -61,6 +62,7 @@ class Assembler:
                     except ValueError:
                         raise SyntaxError(f"Line {line_num}: Invalid hex value")
 
+                    # Zero page
                     if address <= 0xFF:
                         opcode = assembler.opcodes.get((mnemonic, AddressMode.ZERO_PAGE))
                         if opcode is not None:
@@ -68,6 +70,7 @@ class Assembler:
                             machine_code.append(address)
                             continue
 
+                    # Absolute
                     opcode = assembler.opcodes.get((mnemonic, AddressMode.ABSOLUTE))
                     if opcode is None:
                         raise SyntaxError(f"Line {line_num}: Instruction doesn't support this memory addressing mode")

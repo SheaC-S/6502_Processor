@@ -94,17 +94,17 @@ class Processor:
         proc.reg_b = 0
         proc.reg_x = 0
 
-        proc.program_counter = 0xBCE2
-        proc.stack_pointer = 0x01FD
+        proc.program_counter = 0x0200
+        proc.stack_pointer = 0x0100
         proc.cycles = 0
 
-        proc.flag_c = True
-        proc.flag_z = True
+        proc.flag_c = False
+        proc.flag_z = False
         proc.flag_i = True
         proc.flag_d = False
-        proc.flag_b = True
-        proc.flag_v = True
-        proc.flag_n = True
+        proc.flag_b = False
+        proc.flag_v = False
+        proc.flag_n = False
 
     def read_byte(proc : 'Processor', mem : Memory, address: int) -> int:
         """Read a byte from memory.

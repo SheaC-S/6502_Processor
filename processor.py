@@ -1,5 +1,5 @@
 from memory import Memory
-from instructions import instruction_table, Instruction
+from instructions import instruction_table, Instruction, AddressMode
 from state import MachineState
 import sys
 
@@ -175,13 +175,13 @@ class Processor:
         proc.program_counter = (proc.program_counter + 2) % 0x10000
         return data
 
-    def fetch_decode_execute(self, state : MachineState) -> None:
-        proc: "Processor" = state.cpu
+    def fetch_decode_execute(proc: 'Processor', state : MachineState) -> None:
+        processor: "Processor" = state.cpu
         mem: "Memory" = state.memory
 
-        opcode = proc.fetch_byte(mem)
-        instruction = proc.decode(opcode)
-        proc.execute(state, instruction)
+        opcode = processor.fetch_byte(mem)
+        instruction = processor.decode(opcode)
+        processor.execute(state, instruction)
 
     def decode(proc: 'Processor', opcode : int) -> Instruction:
         try:
@@ -192,14 +192,34 @@ class Processor:
             return instruction_table.get(0xEA)
         return instruction
 
-    def execute(proc : 'Processor', state: MachineState, instruction) -> None:
+    def execute(proc : 'Processor', state: MachineState, instruction : Instruction) -> None:
         """
         Execute code for X amount of cycles. Or until a breakpoint is reached.
 
         :param cycles: The number of cycles to execute
         :return: None
         """
-        state = instruction.execute(state)
+        address = proc.get_operand_address(state.memory, instruction.mode)
+        state = instruction.execute(state, address)
         state.cpu.cycles += instruction.cycles
 
+    def get_operand_address(proc : 'Processor', mem : Memory, mode: 'AddressMode') -> int:
+
+        match mode:
+            case AddressMode.IMPLIED:
+                return 0
+
+            case AddressMode.IMMEDIATE:
+                address = proc.program_counter
+                proc.program_counter = (proc.program_counter + 1) % 0x10000
+                return address
+
+            case AddressMode.ZERO_PAGE:
+                return proc.fetch_byte(mem)
+
+            case AddressMode.ABSOLUTE:
+                return proc.fetch_word(mem)
+
+            case _:
+                raise ValueError(f"Unknown address mode. Running No Operation...")
 

@@ -13,15 +13,18 @@ class Assembler:
 
             # print(assembler.opcodes)
 
-    def compile(assembler : 'Assembler', source_code : str) -> list[int]:
+    def compile(assembler : 'Assembler', source_code : str) -> tuple[list[int], dict[int,int]]:
         machine_code : list[int] = []
+        source_map : dict[int, int] = {}
         lines = source_code.strip().split('\n')
 
-        for line_num, line in enumerate(lines, start = 1):
+        for line_num, line in enumerate(lines, start = 0):
             original_line = line.strip()
             line = line.split(';')[0].strip()
             if not line:
                 continue
+
+            source_map[len(machine_code)] = line_num
 
             parts = line.upper().split()
             mnemonic = parts[0]
@@ -85,4 +88,4 @@ class Assembler:
                 else:
                     raise SyntaxError(f"Line {line_num}: Unsupported address mode")
 
-        return machine_code
+        return machine_code, source_map

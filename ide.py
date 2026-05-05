@@ -4,6 +4,7 @@ from PyQt6.QtCore import QTimer, QSize, Qt, QRegularExpression
 from PyQt6.QtGui import QFont, QPalette, QSyntaxHighlighter, QTextCharFormat, QColor, QIcon
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPlainTextEdit, QPushButton, QApplication, QGroupBox, QLabel
 
+from exception import safe_execution
 from memory import Memory
 from processor import Processor
 from screen import Screen
@@ -157,6 +158,16 @@ class IDE(QMainWindow):
         saved_state = copy.deepcopy(ide.state)
         ide.state_stack.append(saved_state)
 
+    def update_editor_highlight(ide : 'ide') -> None:
+        program_counter = ide.processor.program_counter
+
+        if hasattr(ide, "address_to_line") and program_counter in ide.address_to_line:
+            line_to_highlight = ide.address_to_line[program_counter]
+            ide.editor.set_active_line(line_to_highlight)
+        else:
+            ide.editor.clear_active_line()
+
+    @safe_execution
     def load_code(ide : 'ide') -> None:
         if ide.is_running:
             ide.is_running = False
@@ -169,62 +180,63 @@ class IDE(QMainWindow):
                 ide.log_to_console("ERROR: No code to run!")
                 return
 
-            try:
-                vmem_start = ide.vscreen.vmem_start
-                vmem_size = ide.vscreen.width * ide.vscreen.height
-                ide.memory.memory[vmem_start: vmem_start + vmem_size] = [0b00000000] * vmem_size
-                ide.processor.reset()
+            vmem_start = ide.vscreen.vmem_start
+            vmem_size = ide.vscreen.width * ide.vscreen.height
+            ide.memory.memory[vmem_start: vmem_start + vmem_size] = [0b00000000] * vmem_size
+            ide.processor.reset()
 
-                machine_code = ide.assembler.compile(source_code)
+            machine_code, source_map = ide.assembler.compile(source_code)
+            start_address = ide.processor.program_counter
 
-                start_address = ide.processor.program_counter
-                for i, byte in enumerate(machine_code):
-                    ide.memory[start_address + i] = byte
+            ide.address_to_line = {
+                (start_address + offset): line_num
+                for offset, line_num in source_map.items()
+            }
 
-                ide.log_to_console(f"Success! Loaded {len(machine_code)} bytes into memory.")
+            for i, byte in enumerate(machine_code):
+                ide.memory[start_address + i] = byte
 
-                if ide.register_panel.isVisible():
-                    ide.update_register_display()
+            ide.log_to_console(f"Success! Loaded {len(machine_code)} bytes into memory.")
 
-            except Exception as e:
-                ide.is_running = False
-                ide.log_to_console(f"ERROR: {str(e)}")
+            if ide.register_panel.isVisible():
+                ide.update_register_display()
 
+            ide.update_editor_highlight()
+
+    @safe_execution
     def toggle_execution(ide : 'ide') -> None:
 
         if ide.is_running:
             ide.is_running = False
             ide.timer.stop()
+            ide.editor.clear_active_line()
             ide.run_button.setText("Run")
             ide.log_to_console("Execution stopped")
         else:
             print("Running...")
 
-            try:
-                ide.is_running = True
-                ide.run_button.setText("Stop")
-                ide.timer.start(16)
+            ide.is_running = True
+            ide.run_button.setText("Stop")
+            ide.timer.start(16)
 
-            except Exception as e:
-                ide.is_running = False
-                ide.log_to_console(f"ERROR: {str(e)}")
-
+    @safe_execution
     def step_forward(ide : 'ide') -> None:
 
         if ide.is_running:
             ide.log_to_console("Pause the execution first!")
             return
 
-        try:
-            ide.processor.fetch_decode_execute(ide.state)
+        ide.save_state_snapshot()
 
-            if ide.register_panel.isVisible():
-                ide.update_register_display()
+        ide.processor.fetch_decode_execute(ide.state)
+        ide.update_register_display()
 
-            ide.vscreen.render()
+        ide.update_editor_highlight()
 
-        except Exception as e:
-            ide.log_to_console(f"ERROR: {str(e)}")
+        if ide.register_panel.isVisible():
+            ide.update_register_display()
+
+        ide.vscreen.render()
 
     def step_backward(ide : 'ide') -> None:
 
@@ -239,10 +251,11 @@ class IDE(QMainWindow):
         old_state = ide.state_stack.pop()
 
         ide.state = old_state
-        ide.processor = old_state.processor
+        ide.processor = old_state.cpu
         ide.memory = old_state.memory
-
         ide.vscreen.memory = old_state.memory
+
+        ide.update_editor_highlight()
 
         if ide.register_panel.isVisible():
             ide.update_register_display()
@@ -250,15 +263,23 @@ class IDE(QMainWindow):
         ide.vscreen.render()
         ide.log_to_console(f"Step back to: {len(ide.state_stack)}")
 
-
+    @safe_execution
     def emulator_tick(ide : 'ide') -> None:
-        try:
-            ide.processor.fetch_decode_execute(ide.state)
+        ide.processor.fetch_decode_execute(ide.state)
 
-            if ide.register_panel.isVisible():
-                ide.update_register_display()
+        if ide.register_panel.isVisible():
+            ide.update_register_display()
 
-            ide.vscreen.render()
+        ide.vscreen.render()
+        ide.update_editor_highlight()
+
+        """
+        except StopIteration:
+            ide.is_running = False
+            ide.timer.stop()
+            ide.run_button.setText("Run")
+            ide.log_to_console("Program finished (Hit BRK / $00).")
+            ide.editor.clear_active_line()
 
         except Exception as e:
             ide.is_running = False
@@ -268,6 +289,9 @@ class IDE(QMainWindow):
             import traceback
             error_message = traceback.format_exc()
             ide.log_to_console(f"ERROR:\n {error_message}")
+        """
+
+
 
 class CodeEditor(PyQt6.QtWidgets.QPlainTextEdit):
 
@@ -349,20 +373,20 @@ class CodeEditor(PyQt6.QtWidgets.QPlainTextEdit):
             painter.drawLine(editor.lineNumberArea.width() - 1, event.rect().top(),
                              editor.lineNumberArea.width() - 1, event.rect().bottom())
 
-    def SetActiveLine(editor : 'CodeEditor', lineNumber: int) -> None:
-        selection = PyQt6.QtWidgets.QTextEdit.extraSelections()
+    def set_active_line(editor: 'CodeEditor', line_number: int) -> None:
+        selection = PyQt6.QtWidgets.QTextEdit.ExtraSelection()
 
-        line_colour = PyQt6.QtGui.QColor("#333344")
-        selection.format.setBackground(line_colour)
+        line_color = PyQt6.QtGui.QColor("#333344")
+        selection.format.setBackground(line_color)
         selection.format.setProperty(PyQt6.QtGui.QTextFormat.Property.FullWidthSelection, True)
 
         cursor = editor.textCursor()
-        cursor.setPosition(editor.document().findBlockByNumber(lineNumber).position())
+        cursor.setPosition(editor.document().findBlockByNumber(line_number).position())
         selection.cursor = cursor
 
         editor.setExtraSelections([selection])
 
-    def ClearActiveLine(editor : 'CodeEditor') -> None:
+    def clear_active_line(editor: 'CodeEditor') -> None:
         editor.setExtraSelections([])
 
 class LineNumberArea(PyQt6.QtWidgets.QWidget):

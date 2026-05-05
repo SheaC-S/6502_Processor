@@ -2,7 +2,8 @@ import copy
 
 from PyQt6.QtCore import QTimer, QSize, Qt, QRegularExpression
 from PyQt6.QtGui import QFont, QPalette, QSyntaxHighlighter, QTextCharFormat, QColor, QIcon
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPlainTextEdit, QPushButton, QApplication, QGroupBox, QLabel
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPlainTextEdit, QPushButton, \
+    QApplication, QGroupBox, QLabel, QSlider
 
 from exception import safe_execution
 from memory import Memory
@@ -45,6 +46,13 @@ class IDE(QMainWindow):
         ide.step_back_button = QPushButton("Step back")
         ide.toggle_registers_button = QPushButton("Toggle Registers")
 
+        # Speed control
+        ide.speed_label = QLabel("Speed:")
+        ide.speed_slider = QSlider(Qt.Orientation.Horizontal)
+        ide.speed_slider.setRange(1, 1000)  # 1 to 1000 instructions per frame
+        ide.speed_slider.setValue(1)  # Default to slow mode
+        ide.speed_slider.setMinimumWidth(100)
+
         ide.load_button.clicked.connect(ide.load_code)
         ide.run_button.clicked.connect(ide.toggle_execution)
         ide.step_forward_button.clicked.connect(ide.step_forward)
@@ -57,6 +65,8 @@ class IDE(QMainWindow):
         button_layout.addWidget(ide.step_forward_button)
         button_layout.addWidget(ide.step_back_button)
         button_layout.addWidget(ide.toggle_registers_button)
+        button_layout.addWidget(ide.speed_label)
+        button_layout.addWidget(ide.speed_slider)
         editor_layout.addLayout(button_layout)
 
         # New Output Console
@@ -84,7 +94,7 @@ class IDE(QMainWindow):
         ide.label_stack_pointer = QLabel("Stack Pointer: $00")
         ide.label_accumulator = QLabel("Accumulator: $00")
         ide.label_x_reg = QLabel("X Register: $00")
-        ide.label_b_reg = QLabel("B Register: $00\n")
+        ide.label_y_reg = QLabel("Y Register: $00\n")
 
         ide.label_carry_flag = QLabel("Carry Flag: 0")
         ide.label_zero_flag = QLabel("Zero Flag: 0")
@@ -98,7 +108,7 @@ class IDE(QMainWindow):
         register_layout.addWidget(ide.label_stack_pointer)
         register_layout.addWidget(ide.label_accumulator)
         register_layout.addWidget(ide.label_x_reg)
-        register_layout.addWidget(ide.label_b_reg)
+        register_layout.addWidget(ide.label_y_reg)
 
         register_layout.addWidget(ide.label_carry_flag)
         register_layout.addWidget(ide.label_zero_flag)
@@ -138,7 +148,7 @@ class IDE(QMainWindow):
         ide.label_stack_pointer.setText(f"SP: ${processor.stack_pointer:02X}")
         ide.label_accumulator.setText(f"Accumulator: ${processor.reg_a:02X}")
         ide.label_x_reg.setText(f"X Register: ${processor.reg_x:02X}")
-        ide.label_b_reg.setText(f"B Register: ${processor.reg_b:02X}\n")
+        ide.label_y_reg.setText(f"Y Register: ${processor.reg_y:02X}\n")
 
         ide.label_carry_flag.setText(f"Carry Flag: {int(processor.flag_c)}")
         ide.label_zero_flag.setText(f"Zero Flag: {int(processor.flag_z)}")
@@ -265,13 +275,22 @@ class IDE(QMainWindow):
 
     @safe_execution
     def emulator_tick(ide : 'ide') -> None:
-        ide.processor.fetch_decode_execute(ide.state)
+        batch_size = ide.speed_slider.value()
+
+        for _ in range(batch_size):
+            ide.processor.fetch_decode_execute(ide.state)
 
         if ide.register_panel.isVisible():
             ide.update_register_display()
 
-        ide.vscreen.render()
-        ide.update_editor_highlight()
+        if ide.state.memory.screen_refresh:
+            ide.vscreen.render()
+            ide.state.memory.screen_refresh = False
+
+        if batch_size < 5:
+            ide.update_editor_highlight()
+        else:
+            ide.editor.clear_active_line()
 
         """
         except StopIteration:

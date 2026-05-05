@@ -11,9 +11,9 @@ class Memory:
 
         mem.size = size
         mem.memory = [0] * mem.size
-        # print(len(mem.memory))
 
         mem.is_banked = size > 0xFFFF
+        mem.screen_refresh = True
 
         if mem.is_banked:
             mem.bank_size = 16 * 1024

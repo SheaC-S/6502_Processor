@@ -19,8 +19,8 @@ Justify choices made in terms of the design / implementation of it so far -
 @dataclass
 class ProcessorState:
     reg_a: int
-    reg_b: int
     reg_x: int
+    reg_y: int
     program_counter: int
     stack_pointer: int
     cycles: int
@@ -71,7 +71,7 @@ class Processor:
         :return: none
         """
         proc.reg_a = 0 # Accumulator
-        proc.reg_b = 0
+        proc.reg_y = 0
         proc.reg_x = 0
 
         proc.program_counter = 0
@@ -91,7 +91,7 @@ class Processor:
     def reset(proc : 'Processor') -> None:
 
         proc.reg_a = 0
-        proc.reg_b = 0
+        proc.reg_y = 0
         proc.reg_x = 0
 
         proc.program_counter = 0x0200
@@ -124,6 +124,8 @@ class Processor:
         :return: None
         """
         mem[address] = value
+        if address >= 49152:
+            mem.screen_refresh = True
         proc.cycles += 1
 
     def read_word(proc : 'Processor', mem : Memory, address: int) -> int:
@@ -206,8 +208,8 @@ class Processor:
     def get_operand_address(proc : 'Processor', mem : Memory, mode: 'AddressMode') -> int:
 
         match mode:
-            case AddressMode.IMPLIED:
-                return 0
+            case AddressMode.IMPLIED | AddressMode.ACCUMULATOR:
+                return -1
 
             case AddressMode.IMMEDIATE:
                 address = proc.program_counter
@@ -219,6 +221,15 @@ class Processor:
 
             case AddressMode.ABSOLUTE:
                 return proc.fetch_word(mem)
+
+            case AddressMode.RELATIVE:
+                offset = proc.fetch_byte(mem)
+
+                if offset >= 0x80:
+                    offset -= 0x100
+
+                address = (proc.program_counter + offset) & 0xFFFF
+                return address
 
             case _:
                 raise ValueError(f"Unknown address mode. Running No Operation...")

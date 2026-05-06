@@ -1,5 +1,5 @@
 from memory import Memory
-from instructions import instruction_table, Instruction
+from instructions import instruction_table, Instruction, AddressMode
 from state import MachineState
 import sys
 
@@ -19,8 +19,8 @@ Justify choices made in terms of the design / implementation of it so far -
 @dataclass
 class ProcessorState:
     reg_a: int
-    reg_b: int
     reg_x: int
+    reg_y: int
     program_counter: int
     stack_pointer: int
     cycles: int
@@ -71,7 +71,7 @@ class Processor:
         :return: none
         """
         proc.reg_a = 0 # Accumulator
-        proc.reg_b = 0
+        proc.reg_y = 0
         proc.reg_x = 0
 
         proc.program_counter = 0
@@ -91,20 +91,20 @@ class Processor:
     def reset(proc : 'Processor') -> None:
 
         proc.reg_a = 0
-        proc.reg_b = 0
+        proc.reg_y = 0
         proc.reg_x = 0
 
-        proc.program_counter = 0xFCE2
-        proc.stack_pointer = 0x01FD
+        proc.program_counter = 0x0200
+        proc.stack_pointer = 0xFF
         proc.cycles = 0
 
-        proc.flag_c = True
-        proc.flag_z = True
+        proc.flag_c = False
+        proc.flag_z = False
         proc.flag_i = True
         proc.flag_d = False
-        proc.flag_b = True
-        proc.flag_v = True
-        proc.flag_n = True
+        proc.flag_b = False
+        proc.flag_v = False
+        proc.flag_n = False
 
     def read_byte(proc : 'Processor', mem : Memory, address: int) -> int:
         """Read a byte from memory.
@@ -112,8 +112,8 @@ class Processor:
         :param address: The address to read from
         :return: int
         """
-        data = mem.memory[address]
-        proc.cycles += 1
+        data = mem[address]
+        # proc.cycles += 1
         return data
 
     def write_byte(proc : 'Processor', mem : Memory, address: int, value: int) -> None:
@@ -123,8 +123,10 @@ class Processor:
         :param value: The value to write
         :return: None
         """
-        mem.memory[address] = value
-        proc.cycles += 1
+        mem[address] = value
+        if address >= 49152:
+            mem.screen_refresh = True
+        # proc.cycles += 1
 
     def read_word(proc : 'Processor', mem : Memory, address: int) -> int:
         """Read a word from memory.
@@ -160,7 +162,8 @@ class Processor:
         :return: int
         """
         data = proc.read_byte(mem, proc.program_counter)
-        proc.program_counter += 1
+        # proc.program_counter += 1
+        proc.program_counter = (proc.program_counter + 1) % 0x10000
         return data
 
     def fetch_word(proc : 'Processor', mem : Memory) -> int:
@@ -170,16 +173,34 @@ class Processor:
         :return: int
         """
         data = proc.read_word(mem, proc.program_counter)
-        proc.program_counter += 2
+        # proc.program_counter += 2
+        proc.program_counter = (proc.program_counter + 2) % 0x10000
         return data
 
-    def fetch_decode_execute(self, state : MachineState) -> None:
-        proc: "Processor" = state.cpu
+    def push_byte(proc : 'Processor', mem : Memory, value : int) -> None:
+        proc.write_byte(mem, 0x0100 + proc.stack_pointer, value)
+        proc.stack_pointer = (proc.stack_pointer - 1) & 0xFF
+
+    def push_word(proc : 'Processor', mem : Memory, value : int) -> None:
+        proc.push_byte(mem, (value >> 8) & 0xFF)
+        proc.push_byte(mem, value & 0xFF)
+
+    def pop_byte(proc : 'Processor', mem : Memory) -> int:
+        proc.stack_pointer = (proc.stack_pointer + 1) & 0xFF
+        return proc.read_byte(mem, 0x100 + proc.stack_pointer)
+
+    def pop_word(proc : 'Processor', mem : Memory) -> int:
+        low_byte = proc.pop_byte(mem)
+        high_byte = proc.pop_byte(mem)
+        return (high_byte << 8) | low_byte
+
+    def fetch_decode_execute(proc: 'Processor', state : MachineState) -> None:
+        processor: "Processor" = state.cpu
         mem: "Memory" = state.memory
 
-        opcode = proc.fetch_byte(mem)
-        instruction = proc.decode(opcode)
-        proc.execute(state, instruction)
+        opcode = processor.fetch_byte(mem)
+        instruction = processor.decode(opcode)
+        processor.execute(state, instruction)
 
     def decode(proc: 'Processor', opcode : int) -> Instruction:
         try:
@@ -190,14 +211,43 @@ class Processor:
             return instruction_table.get(0xEA)
         return instruction
 
-    def execute(proc : 'Processor', state: MachineState, instruction) -> None:
+    def execute(proc : 'Processor', state: MachineState, instruction : Instruction) -> None:
         """
         Execute code for X amount of cycles. Or until a breakpoint is reached.
 
         :param cycles: The number of cycles to execute
         :return: None
         """
-        state = instruction.execute(state)
+        address = proc.get_operand_address(state.memory, instruction.mode)
+        state = instruction.execute(state, address)
         state.cpu.cycles += instruction.cycles
 
+    def get_operand_address(proc : 'Processor', mem : Memory, mode: 'AddressMode') -> int:
+
+        match mode:
+            case AddressMode.IMPLIED | AddressMode.ACCUMULATOR:
+                return -1
+
+            case AddressMode.IMMEDIATE:
+                address = proc.program_counter
+                proc.program_counter = (proc.program_counter + 1) % 0x10000
+                return address
+
+            case AddressMode.ZERO_PAGE:
+                return proc.fetch_byte(mem)
+
+            case AddressMode.ABSOLUTE:
+                return proc.fetch_word(mem)
+
+            case AddressMode.RELATIVE:
+                offset = proc.fetch_byte(mem)
+
+                if offset >= 0x80:
+                    offset -= 0x100
+
+                address = (proc.program_counter + offset) & 0xFFFF
+                return address
+
+            case _:
+                raise ValueError(f"Unknown address mode. Running No Operation...")
 

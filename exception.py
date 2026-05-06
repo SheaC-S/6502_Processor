@@ -1,19 +1,18 @@
-# utils.py
 import functools
 import traceback
 
 
 def safe_execution(func):
-    """
-    A decorator that wraps IDE methods in a unified error handler
-    """
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
+        """
+        Exception wrapper, used for all functions that process FDE cycles in the IDE
+        """
         try:
             return func(self)
 
         except StopIteration:
-            # Graceful Halt (BRK instruction)
+            # Halt (BRK instruction)
             self.is_running = False
             self.timer.stop()
             self.run_button.setText("Run")

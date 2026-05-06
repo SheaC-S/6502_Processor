@@ -145,7 +145,7 @@ class IDE(QMainWindow):
         # print("Hello world!")
 
         ide.label_program_counter.setText(f"Program Counter: ${processor.program_counter:04X}")
-        ide.label_stack_pointer.setText(f"SP: ${processor.stack_pointer:02X}")
+        ide.label_stack_pointer.setText(f"Stack Pointer: ${processor.stack_pointer:02X}")
         ide.label_accumulator.setText(f"Accumulator: ${processor.reg_a:02X}")
         ide.label_x_reg.setText(f"X Register: ${processor.reg_x:02X}")
         ide.label_y_reg.setText(f"Y Register: ${processor.reg_y:02X}\n")
@@ -223,8 +223,7 @@ class IDE(QMainWindow):
             ide.run_button.setText("Run")
             ide.log_to_console("Execution stopped")
         else:
-            print("Running...")
-
+            # print("Running...")
             ide.is_running = True
             ide.run_button.setText("Stop")
             ide.timer.start(16)

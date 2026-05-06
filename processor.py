@@ -95,7 +95,7 @@ class Processor:
         proc.reg_x = 0
 
         proc.program_counter = 0x0200
-        proc.stack_pointer = 0x0100
+        proc.stack_pointer = 0xFF
         proc.cycles = 0
 
         proc.flag_c = False
@@ -113,7 +113,7 @@ class Processor:
         :return: int
         """
         data = mem[address]
-        proc.cycles += 1
+        # proc.cycles += 1
         return data
 
     def write_byte(proc : 'Processor', mem : Memory, address: int, value: int) -> None:
@@ -126,7 +126,7 @@ class Processor:
         mem[address] = value
         if address >= 49152:
             mem.screen_refresh = True
-        proc.cycles += 1
+        # proc.cycles += 1
 
     def read_word(proc : 'Processor', mem : Memory, address: int) -> int:
         """Read a word from memory.
@@ -176,6 +176,23 @@ class Processor:
         # proc.program_counter += 2
         proc.program_counter = (proc.program_counter + 2) % 0x10000
         return data
+
+    def push_byte(proc : 'Processor', mem : Memory, value : int) -> None:
+        proc.write_byte(mem, 0x0100 + proc.stack_pointer, value)
+        proc.stack_pointer = (proc.stack_pointer - 1) & 0xFF
+
+    def push_word(proc : 'Processor', mem : Memory, value : int) -> None:
+        proc.push_byte(mem, (value >> 8) & 0xFF)
+        proc.push_byte(mem, value & 0xFF)
+
+    def pop_byte(proc : 'Processor', mem : Memory) -> int:
+        proc.stack_pointer = (proc.stack_pointer + 1) & 0xFF
+        return proc.read_byte(mem, 0x100 + proc.stack_pointer)
+
+    def pop_word(proc : 'Processor', mem : Memory) -> int:
+        low_byte = proc.pop_byte(mem)
+        high_byte = proc.pop_byte(mem)
+        return (high_byte << 8) | low_byte
 
     def fetch_decode_execute(proc: 'Processor', state : MachineState) -> None:
         processor: "Processor" = state.cpu

@@ -394,7 +394,7 @@ class CodeEditor(PyQt6.QtWidgets.QPlainTextEdit):
     def set_active_line(editor: 'CodeEditor', line_number: int) -> None:
         selection = PyQt6.QtWidgets.QTextEdit.ExtraSelection()
 
-        line_color = PyQt6.QtGui.QColor("#333344")
+        line_color = PyQt6.QtGui.QColor("#40FF0080")
         selection.format.setBackground(line_color)
         selection.format.setProperty(PyQt6.QtGui.QTextFormat.Property.FullWidthSelection, True)
 
@@ -425,7 +425,7 @@ class AssemblyHighlighter(QSyntaxHighlighter):
         self.highlightingRules = []
 
         mnemonic_format = QTextCharFormat()
-        mnemonic_format.setForeground(QColor("pink"))
+        mnemonic_format.setForeground(QColor("orange"))
 
         commands = list(set(instr.name for instr in instruction_table.values()))
 
@@ -435,8 +435,8 @@ class AssemblyHighlighter(QSyntaxHighlighter):
 
         # Format for Hex Addresses (e.g., $8000, #$FF)
         hex_format = QTextCharFormat()
-        hex_format.setForeground(QColor("lightgreen"))
-        self.highlightingRules.append((QRegularExpression(r"[$#][0-9A-Fa-f]+"), hex_format))
+        hex_format.setForeground(QColor("#2d7ed2"))
+        self.highlightingRules.append((QRegularExpression(r"#?\$[0-9A-Fa-f]+"), hex_format))
 
         # Format for Comments (e.g., ; This is a comment)
         comment_format = QTextCharFormat()

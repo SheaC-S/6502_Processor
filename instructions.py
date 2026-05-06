@@ -1114,10 +1114,10 @@ instruction_table = {
     0xCE: Instruction("DEC", AddressMode.ABSOLUTE, ins_dec, 6),
 
     # DEX
-    0xCA: Instruction("DEX", AddressMode.ZERO_PAGE, ins_dex, 2),
+    0xCA: Instruction("DEX", AddressMode.IMPLIED, ins_dex, 2),
 
     # DEY
-    0x88: Instruction("DEY", AddressMode.ZERO_PAGE, ins_dey, 2),
+    0x88: Instruction("DEY", AddressMode.IMPLIED, ins_dey, 2),
 
     # EOR
     0x49: Instruction("EOR", AddressMode.IMMEDIATE, ins_eor, 2),
@@ -1239,5 +1239,4 @@ instruction_table = {
 
     # TYA
     0x98: Instruction("TYA", AddressMode.IMPLIED, ins_tya, 2),
-
 }

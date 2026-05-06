@@ -21,7 +21,7 @@ class Screen(QLabel):
 
         screen.setFixedSize(screen.width * screen.scale_factor,
                             screen.height * screen.scale_factor)
-        screen.setStyleSheet("background-color: black; border: 2px solid #444;")
+        screen.setStyleSheet("background-color: black;")
 
     def colour_decode(screen : 'Screen', byte : int) -> QColor:
         """Converts an 8-bit value into a 24-bit RGB tuple

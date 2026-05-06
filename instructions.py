@@ -1068,7 +1068,7 @@ instruction_table = {
     0x30: Instruction("BMI", AddressMode.RELATIVE, ins_bmi, 2),
 
     # BNE
-    0xD0: Instruction("BEQ", AddressMode.RELATIVE,ins_bne, 2),
+    0xD0: Instruction("BNE", AddressMode.RELATIVE,ins_bne, 2),
 
     # BPL
     0x10: Instruction("BPL", AddressMode.RELATIVE,ins_bpl, 2),

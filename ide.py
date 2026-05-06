@@ -1,9 +1,9 @@
 import copy
 
 from PyQt6.QtCore import QTimer, QSize, Qt, QRegularExpression
-from PyQt6.QtGui import QFont, QPalette, QSyntaxHighlighter, QTextCharFormat, QColor, QIcon
+from PyQt6.QtGui import QFont, QPalette, QSyntaxHighlighter, QTextCharFormat, QColor, QIcon, QFontDatabase
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPlainTextEdit, QPushButton, \
-    QApplication, QGroupBox, QLabel, QSlider
+    QApplication, QGroupBox, QLabel, QSlider, QComboBox
 
 from exception import safe_execution
 from memory import Memory
@@ -45,6 +45,7 @@ class IDE(QMainWindow):
         ide.step_forward_button = QPushButton("Step forward")
         ide.step_back_button = QPushButton("Step back")
         ide.toggle_registers_button = QPushButton("Toggle Registers")
+        ide.toggle_memory_button = QPushButton("Toggle Memory Panel")
 
         # Speed control
         ide.speed_label = QLabel("Speed:")
@@ -57,14 +58,16 @@ class IDE(QMainWindow):
         ide.run_button.clicked.connect(ide.toggle_execution)
         ide.step_forward_button.clicked.connect(ide.step_forward)
         ide.step_back_button.clicked.connect(ide.step_backward)
-
         ide.toggle_registers_button.clicked.connect(ide.toggle_registers)
+        ide.toggle_memory_button.clicked.connect(ide.toggle_memory_map)
+
         editor_layout.addWidget(ide.editor)
         button_layout.addWidget(ide.load_button)
         button_layout.addWidget(ide.run_button)
         button_layout.addWidget(ide.step_forward_button)
         button_layout.addWidget(ide.step_back_button)
         button_layout.addWidget(ide.toggle_registers_button)
+        button_layout.addWidget(ide.toggle_memory_button)
         button_layout.addWidget(ide.speed_label)
         button_layout.addWidget(ide.speed_slider)
         editor_layout.addLayout(button_layout)
@@ -120,12 +123,49 @@ class IDE(QMainWindow):
 
         ide.register_panel.setVisible(False)
 
+        ####################################
+        # Memory viewer
+        ide.memory_panel = QGroupBox("Memory Panel")
+        memory_layout = QVBoxLayout()
+
+        ide.memory_page_selector = QComboBox()
+        ide.memory_page_selector.addItems([
+            "$00 - Zero Page",
+            "$01 - Stack",
+            "$02 - General Memory",
+            "$C0 - Virtual Screen"
+        ])
+
+        ide.page_map = [0x00, 0x01, 0x02, 0xC0]
+        ide.memory_display = QPlainTextEdit()
+        ide.memory_display.setReadOnly(True)
+        ide.memory_display.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        ide.memory_display.setMinimumWidth(550)
+        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        font.setPointSize(10)
+        ide.memory_display.setFont(font)
+
+        memory_layout.addWidget(QLabel("Live Memory Viewer"))
+        memory_layout.addWidget(ide.memory_page_selector)
+        memory_layout.addWidget(ide.memory_display)
+        ide.memory_panel.setLayout(memory_layout)
+        ide.memory_panel.setVisible(False)
+
+        ide.memory_page_selector.currentIndexChanged.connect(ide.update_memory_display)
+
+        ########################
+
         # Main layout
         main_layout.addLayout(editor_layout)
         right_layout = QVBoxLayout()
+        sub_layout = QHBoxLayout()
         right_layout.addWidget(ide.vscreen)
         right_layout.addWidget(ide.console_output)
-        right_layout.addWidget(ide.register_panel)
+
+        sub_layout.addWidget(ide.register_panel)
+        sub_layout.addWidget(ide.memory_panel)
+        right_layout.addLayout(sub_layout)
+
         main_layout.addLayout(right_layout)
 
         ide.timer = QTimer()
@@ -135,6 +175,13 @@ class IDE(QMainWindow):
     def toggle_registers(ide : 'ide') -> None:
         is_visible = ide.register_panel.isVisible()
         ide.register_panel.setVisible(not is_visible)
+
+        if not is_visible:
+            ide.update_register_display()
+
+    def toggle_memory_map(ide : 'ide') -> None:
+        is_visible = ide.memory_panel.isVisible()
+        ide.memory_panel.setVisible(not is_visible)
 
         if not is_visible:
             ide.update_register_display()
@@ -177,6 +224,28 @@ class IDE(QMainWindow):
         else:
             ide.editor.clear_active_line()
 
+    def update_memory_display(ide : 'ide') -> None:
+        combo_index = ide.memory_page_selector.currentIndex()
+        page_number = ide.page_map[combo_index]
+
+        start_address = page_number * 256
+        lines = []
+        lines.append("Addr  | 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F")
+        lines.append("-" * 55)
+
+        for row in range(16):
+            row_address = start_address + (row * 16)
+            hex_bytes = []
+
+            for col in range(16):
+                val = ide.state.memory.memory[row_address + col]
+                hex_bytes.append(f"{val:02X}")
+
+            hex_string = " ".join(hex_bytes)
+            lines.append(f"${row_address:04X} | {hex_string}")
+
+        ide.memory_display.setPlainText("\n".join(lines))
+
     @safe_execution
     def load_code(ide : 'ide') -> None:
         if ide.is_running:
@@ -210,6 +279,13 @@ class IDE(QMainWindow):
 
             if ide.register_panel.isVisible():
                 ide.update_register_display()
+
+            if ide.memory_panel.isVisible():
+                ide.update_memory_display()
+
+            if ide.state.memory.screen_refresh:
+                ide.vscreen.render()
+                ide.state.memory.screen_refresh = False
 
             ide.update_editor_highlight()
 
@@ -245,7 +321,9 @@ class IDE(QMainWindow):
         if ide.register_panel.isVisible():
             ide.update_register_display()
 
-        ide.vscreen.render()
+        if ide.state.memory.screen_refresh:
+            ide.vscreen.render()
+            ide.state.memory.screen_refresh = False
 
     def step_backward(ide : 'ide') -> None:
 
@@ -269,7 +347,10 @@ class IDE(QMainWindow):
         if ide.register_panel.isVisible():
             ide.update_register_display()
 
-        ide.vscreen.render()
+        if ide.state.memory.screen_refresh:
+            ide.vscreen.render()
+            ide.state.memory.screen_refresh = False
+
         ide.log_to_console(f"Step back to: {len(ide.state_stack)}")
 
     @safe_execution
@@ -281,6 +362,9 @@ class IDE(QMainWindow):
 
         if ide.register_panel.isVisible():
             ide.update_register_display()
+
+        if ide.memory_panel.isVisible():
+            ide.update_memory_display()
 
         if ide.state.memory.screen_refresh:
             ide.vscreen.render()
@@ -442,6 +526,11 @@ class AssemblyHighlighter(QSyntaxHighlighter):
         comment_format = QTextCharFormat()
         comment_format.setForeground(QColor("gray"))
         self.highlightingRules.append((QRegularExpression(r";.*"), comment_format))
+
+        # Format for labels (e.g., LOOP:, SUB:)
+        label_format = QTextCharFormat()
+        label_format.setForeground(QColor("cyan"))
+        self.highlightingRules.append((QRegularExpression(r'\b[A-Za-z_][A-Za-z0-9_]*:'), label_format))
 
     def highlightBlock(self, text: str) -> None:
         for pattern, format in self.highlightingRules:

@@ -17,6 +17,8 @@ class Assembler:
         machine_code : list[int] = []
         source_map : dict[int, int] = {}
         symbol_table : dict[str, int] = {}
+        program_counter : int = 0
+        clean_lines : list[tuple] = []
         lines = source_code.strip().split('\n')
 
         for line_num, line in enumerate(lines, start = 0):
@@ -25,8 +27,85 @@ class Assembler:
             if not line:
                 continue
 
-            source_map[len(machine_code)] = line_num
+            # For any constant values...
+            if '=' in line:
+                name_str, val_str = line.split('=', 1)
+                const_name = name_str.strip().upper()
+                const_val_str = val_str.strip().upper()
+
+                try:
+                    if const_val_str.startswith('$'):
+                        const_val = int(const_val_str[1:], 16)
+                    else:
+                        const_val = int(const_val_str)
+                    symbol_table[const_name] = const_val
+                except ValueError:
+                    raise SyntaxError(f"Line {line_num}: Invalid constant value '{const_val_str}'")
+
+                continue
+
             parts = line.upper().split()
+
+            # Collects all the labels (LOOP:)
+            if parts[0].endswith(':'):
+                label_name = parts[0][:-1]
+                symbol_table[label_name] = program_counter
+                parts.pop(0)
+
+            if not parts:
+                continue
+
+            # Determine instruction size for the program counter
+            mnemonic = parts[0]
+            operand = parts[1] if len(parts) > 1 else None
+
+            # Store a list of usable lines for the second part of compilation
+            clean_lines.append((line_num, mnemonic, operand, program_counter))
+
+            if operand is None or operand == 'A':
+                program_counter += 1
+            elif operand.startswith('#$'):
+                program_counter += 2
+            elif operand.startswith('$'):
+                address = int(operand[1:], 16)
+                program_counter += 2 if address <= 0xFF else 3
+            else:
+                if assembler.opcodes.get((mnemonic, AddressMode.RELATIVE)):
+                    program_counter += 2
+                else:
+                    program_counter += 3
+
+        for line_num, mnemonic, operand, instruction_pc in clean_lines:
+            source_map[len(machine_code)] = line_num
+
+            # Resolve labels and constants into hex values
+            if operand is not None and not operand.startswith(('#$', '$', 'A')):
+                is_immediate = operand.startswith('#')
+                symbol_name = operand[1:] if is_immediate else operand
+
+                if symbol_name not in symbol_table:
+                    raise SyntaxError(f"Line {line_num}: Unknown label/constant '{symbol_name}'")
+
+                target_value = symbol_table[symbol_name]
+
+                if is_immediate:
+                    # Constant being used as an immediate value (e.g., LDA #SYS_CALL)
+                    if target_value > 0xFF:
+                        raise SyntaxError(f"Line {line_num}: Immediate value '{symbol_name}' too large - must be 8-bit")
+                    operand = f"#${target_value:02X}"
+                else:
+                    # Constant or label being used as an address
+                    if assembler.opcodes.get((mnemonic, AddressMode.RELATIVE)):
+                        offset = target_value - (instruction_pc + 2)
+                        if offset < -128 or offset > 127:
+                            raise SyntaxError(f"Line {line_num}: Branch target '{symbol_name}' is out of range")
+                        operand = f"${offset & 0xFF:02X}"
+                    else:
+                        operand = f"${target_value:04X}"
+
+            parts = [mnemonic]
+            if operand is not None:
+                parts.append(operand)
 
             match parts:
 

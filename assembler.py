@@ -19,7 +19,7 @@ class Assembler:
         symbol_table : dict[str, int] = {}
         lines = source_code.strip().split('\n')
 
-        for line_num, line in enumerate(lines, start = 1):
+        for line_num, line in enumerate(lines, start = 0):
             original_line = line.strip()
             line = line.split(';')[0].strip()
             if not line:

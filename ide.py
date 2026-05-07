@@ -264,7 +264,7 @@ class IDE(QMainWindow):
             ide.memory.memory[vmem_start: vmem_start + vmem_size] = [0b00000000] * vmem_size
             ide.processor.reset()
 
-            machine_code, source_map = ide.assembler.compile(source_code)
+            machine_code, source_map = ide.assembler.compile(source_code, ide.processor.program_counter)
             start_address = ide.processor.program_counter
 
             ide.address_to_line = {

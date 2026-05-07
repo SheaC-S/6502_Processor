@@ -13,11 +13,11 @@ class Assembler:
 
             # print(assembler.opcodes)
 
-    def compile(assembler : 'Assembler', source_code : str) -> tuple[list[int], dict[int,int]]:
+    def compile(assembler : 'Assembler', source_code : str, start_address : int) -> tuple[list[int], dict[int,int]]:
         machine_code : list[int] = []
         source_map : dict[int, int] = {}
         symbol_table : dict[str, int] = {}
-        program_counter : int = 0
+        program_counter : int = start_address
         clean_lines : list[tuple] = []
         lines = source_code.strip().split('\n')
 
@@ -64,11 +64,14 @@ class Assembler:
 
             if operand is None or operand == 'A':
                 program_counter += 1
-            elif operand.startswith('#$'):
+            elif operand.startswith('#'):
                 program_counter += 2
             elif operand.startswith('$'):
                 address = int(operand[1:], 16)
                 program_counter += 2 if address <= 0xFF else 3
+            elif operand in symbol_table:
+                target_value = symbol_table[operand]
+                program_counter += 2 if target_value <= 0xFF else 3
             else:
                 if assembler.opcodes.get((mnemonic, AddressMode.RELATIVE)):
                     program_counter += 2

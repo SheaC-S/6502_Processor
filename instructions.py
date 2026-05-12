@@ -818,7 +818,10 @@ def ins_rts(state: MachineState, address : int) -> MachineState:
     proc : 'Processor' = state.cpu
     mem : 'Memory' = state.memory
 
-    proc.reg_a = proc.pop_byte(mem) + 1
+    low_byte = proc.pop_byte(mem)
+    high_byte = proc.pop_byte(mem)
+    return_address = (high_byte << 8) | low_byte
+    proc.program_counter = (return_address + 1) & 0xFFFF
 
     return MachineState(proc, mem)
 

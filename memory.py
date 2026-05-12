@@ -78,6 +78,3 @@ class Memory:
         physical_address = mem.translate_address(address)
         mem.memory[physical_address] = value
         return mem.memory[physical_address]
-
-if __name__ == "__main__":
-    m = Memory(0x1FFFF)

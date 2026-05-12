@@ -92,7 +92,7 @@ class Assembler:
                 target_value = symbol_table[symbol_name]
 
                 if is_immediate:
-                    # Constant being used as an immediate value (e.g., LDA #SYS_CALL)
+                    # Constant being used as an immediate value (e.g., LDA)
                     if target_value > 0xFF:
                         raise SyntaxError(f"Line {line_num}: Immediate value '{symbol_name}' too large - must be 8-bit")
                     operand = f"#${target_value:02X}"

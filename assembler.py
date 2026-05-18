@@ -1,5 +1,3 @@
-from lib2to3.pygram import Symbols
-
 from instructions import instruction_table, AddressMode
 
 
@@ -59,18 +57,28 @@ class Assembler:
             mnemonic = parts[0]
             operand = parts[1] if len(parts) > 1 else None
 
-            # Store a list of usable lines for the second part of compilation
+            clean_operand = operand
+
+            if clean_operand is not None:
+                if clean_operand.endswith(',X') or clean_operand.endswith(',Y'):
+                    clean_operand = clean_operand[:-2]  # Strips the modifier off
+
             clean_lines.append((line_num, mnemonic, operand, program_counter))
 
-            if operand is None or operand == 'A':
+            if clean_operand is None or clean_operand == 'A':
                 program_counter += 1
-            elif operand.startswith('#'):
+            elif clean_operand.startswith('#'):
                 program_counter += 2
-            elif operand.startswith('$'):
-                address = int(operand[1:], 16)
+            elif clean_operand.startswith('$'):
+                address = int(clean_operand[1:], 16)
                 program_counter += 2 if address <= 0xFF else 3
-            elif operand in symbol_table:
-                target_value = symbol_table[operand]
+            elif clean_operand.startswith('('):
+                if clean_operand.endswith(',X)') or clean_operand.endswith('),Y'):
+                    program_counter += 2
+                else:
+                    program_counter += 3
+            elif clean_operand in symbol_table:
+                target_value = symbol_table[clean_operand]
                 program_counter += 2 if target_value <= 0xFF else 3
             else:
                 if assembler.opcodes.get((mnemonic, AddressMode.RELATIVE)):
@@ -80,6 +88,36 @@ class Assembler:
 
         for line_num, mnemonic, operand, instruction_pc in clean_lines:
             source_map[len(machine_code)] = line_num
+
+            mode_override = None
+            indexed_x = False
+            indexed_y = False
+
+            # 2. MUST WRAP ALL STRING CHECKS IN THIS IF STATEMENT:
+            if operand is not None:
+
+                # Indirect addressing checks
+                if operand.startswith('('):
+                    if operand.endswith(",X)"):
+                        mode_override = AddressMode.INDIRECT_X
+                        operand = operand.replace("(", "").replace(",X)", "")
+                    elif operand.endswith("),Y"):
+                        mode_override = AddressMode.INDIRECT_Y
+                        operand = operand.replace("(", "").replace("),Y", "")
+                    elif operand.endswith(")"):
+                        mode_override = AddressMode.INDIRECT
+                        operand = operand.replace("(", "").replace(")", "")
+
+                # Indexed addressing checks
+                elif operand.endswith(",X"):
+                    indexed_x = True
+                    operand = operand.replace(",X", "")
+                elif operand.endswith(",Y"):
+                    indexed_y = True
+                    operand = operand.replace(",Y", "")
+
+            if operand is not None and not operand.startswith(('#$', '$', 'A')):
+                is_immediate = operand.startswith('#')
 
             # Resolve labels and constants into hex values
             if operand is not None and not operand.startswith(('#$', '$', 'A')):
@@ -111,6 +149,31 @@ class Assembler:
                 parts.append(operand)
 
             match parts:
+
+                case [mnemonic, operand] if mode_override is not None:
+                    opcode = assembler.opcodes.get((mnemonic, mode_override))
+                    if opcode is None:
+                        raise SyntaxError(f"Line {line_num}: Instruction doesn't support indirect addressing")
+
+                    try:
+                        # operand is now just the hex string (e.g., "$10" or "$0300")
+                        if operand.startswith('$'):
+                            address = int(operand[1:], 16)
+                        else:
+                            address = int(operand)
+                    except ValueError:
+                        raise SyntaxError(f"Line {line_num}: Invalid hex value")
+
+                    machine_code.append(opcode)
+
+                    if mode_override in [AddressMode.INDIRECT_X, AddressMode.INDIRECT_Y]:
+                        if address > 0xFF:
+                            raise SyntaxError(f"Line {line_num}: Indirect X/Y requires an 8-bit Zero Page address")
+                        machine_code.append(address & 0xFF)
+
+                    elif mode_override == AddressMode.INDIRECT:
+                        machine_code.append(address & 0xFF)
+                        machine_code.append((address >> 8) & 0xFF)
 
                 case [mnemonic]:
                     # Implied
@@ -144,13 +207,12 @@ class Assembler:
                     machine_code.append(value)
 
                 case [mnemonic, operand] if operand.startswith('$'):
-                    # Checking to ensure no values are higher than 16 bit
                     try:
                         address = int(operand[1:], 16)
                     except ValueError:
                         raise SyntaxError(f"Line {line_num}: Invalid hex value")
 
-                    # Relative
+                    # Relative Branching
                     opcode = assembler.opcodes.get((mnemonic, AddressMode.RELATIVE))
                     if opcode is not None:
                         if address > 0xFF:
@@ -159,25 +221,63 @@ class Assembler:
                         machine_code.append(address)
                         continue
 
-                    # Zero page
-                    if address <= 0xFF:
-                        opcode = assembler.opcodes.get((mnemonic, AddressMode.ZERO_PAGE))
+                    # Zero Page
+                    elif address <= 0xFF:
+                        if indexed_x:
+                            target_mode = AddressMode.ZERO_PAGE_X
+                        elif indexed_y:
+                            target_mode = AddressMode.ZERO_PAGE_Y
+                        else:
+                            target_mode = AddressMode.ZERO_PAGE
+
+                        opcode = assembler.opcodes.get((mnemonic, target_mode))
                         if opcode is not None:
                             machine_code.append(opcode)
                             machine_code.append(address)
                             continue
 
-                    # Absolute
-                    opcode = assembler.opcodes.get((mnemonic, AddressMode.ABSOLUTE))
+                    # 3. Check Absolute
+                    if indexed_x:
+                        target_mode = AddressMode.ABSOLUTE_X
+                    elif indexed_y:
+                        target_mode = AddressMode.ABSOLUTE_Y
+                    else:
+                        target_mode = AddressMode.ABSOLUTE
+
+                    opcode = assembler.opcodes.get((mnemonic, target_mode))
                     if opcode is None:
                         raise SyntaxError(f"Line {line_num}: Instruction doesn't support this memory addressing mode")
 
-                    low_byte = address & 0xFF
-                    high_byte = (address >> 8) & 0xFF
+                    machine_code.append(opcode)
+                    machine_code.append(address & 0xFF)
+                    machine_code.append((address >> 8) & 0xFF)
+
+                case[mnemonic, operand] if mode_override is not None:
+                    opcode = assembler.opcodes.get((mnemonic, mode_override))
+                    if opcode is None:
+                        raise SyntaxError(f"Line {line_num}: Instruction doesn't support indirect addressing")
+
+                    try:
+                        # The operand was cleaned above, so it's just the hex string (e.g., "$10" or "$2000")
+                        if operand.startswith('$'):
+                            address = int(operand[1:], 16)
+                        else:
+                            address = int(operand)  # Fallback if it was a label resolved to an int
+                    except ValueError:
+                        raise SyntaxError(f"Line {line_num}: Invalid hex value")
 
                     machine_code.append(opcode)
-                    machine_code.append(low_byte)
-                    machine_code.append(high_byte)
+
+                    # INDIRECT_X and INDIRECT_Y only take a 1-byte Zero Page address
+                    if mode_override in [AddressMode.INDIRECT_X, AddressMode.INDIRECT_Y]:
+                        if address > 0xFF:
+                            raise SyntaxError(f"Line {line_num}: Indirect X/Y requires an 8-bit Zero Page address")
+                        machine_code.append(address & 0xFF)
+
+                    # Absolute INDIRECT (JMP) takes a 2-byte address
+                    elif mode_override == AddressMode.INDIRECT:
+                        machine_code.append(address & 0xFF)
+                        machine_code.append((address >> 8) & 0xFF)
 
                 case _:
                     raise SyntaxError(f"Line {line_num}: Unsupported address mode")

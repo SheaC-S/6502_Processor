@@ -18,7 +18,7 @@ class Memory:
         if mem.is_banked:
             mem.bank_size = 16 * 1024
             mem.window_start = 0x8000
-            mem.window_end = 0xBFFF
+            mem.window_end = 0xC000
             mem.bank_register = 0xD000
 
             mem.current_bank = 0

@@ -124,7 +124,9 @@ class Processor:
         :return: None
         """
         mem[address] = value
-        if address >= 49152:
+        physical_address = mem.translate_address(address)
+
+        if physical_address >= 49152:
             mem.screen_refresh = True
         # proc.cycles += 1
 
@@ -247,6 +249,45 @@ class Processor:
 
                 address = (proc.program_counter + offset) & 0xFFFF
                 return address
+
+            case AddressMode.INDIRECT:
+                ptr = proc.fetch_word(mem)
+                if (ptr & 0x00FF) == 0x00FF:
+                    low_byte = proc.read_byte(mem, ptr)
+                    high_byte = proc.read_byte(mem, ptr & 0xFF00)
+                    return (high_byte << 8) | low_byte
+                else:
+                    return proc.read_word(mem, ptr)
+
+            case AddressMode.INDIRECT_X:
+                base_ptr = proc.fetch_byte(mem)
+                zp_ptr = (base_ptr + proc.reg_x) & 0xFF
+                low_byte = proc.read_byte(mem, zp_ptr)
+                high_byte = proc.read_byte(mem, (zp_ptr + 1) & 0xFF)
+                return (high_byte << 8) | low_byte
+
+            case AddressMode.INDIRECT_Y:
+                zp_ptr = proc.fetch_byte(mem)
+                low_byte = proc.read_byte(mem, zp_ptr)
+                high_byte = proc.read_byte(mem, (zp_ptr + 1) & 0xFF)
+                base_address = (high_byte << 8) | low_byte
+                return (base_address + proc.reg_y) & 0xFFFF
+
+            case AddressMode.ABSOLUTE_X:
+                base_address = proc.fetch_word(mem)
+                return (base_address + proc.reg_x) & 0xFFFF
+
+            case AddressMode.ABSOLUTE_Y:
+                base_address = proc.fetch_word(mem)
+                return (base_address + proc.reg_y) & 0xFFFF
+
+            case AddressMode.ZERO_PAGE_X:
+                base_address = proc.fetch_byte(mem)
+                return (base_address + proc.reg_x) & 0xFF
+
+            case AddressMode.ZERO_PAGE_Y:
+                base_address = proc.fetch_byte(mem)
+                return (base_address + proc.reg_y) & 0xFF
 
             case _:
                 raise ValueError(f"Unknown address mode. Running No Operation...")

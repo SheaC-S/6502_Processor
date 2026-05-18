@@ -11,6 +11,13 @@ class AddressMode(Enum):
     ABSOLUTE = "ABSOLUTE"
     ZERO_PAGE = "ZERO_PAGE"
     RELATIVE = "RELATIVE"
+    INDIRECT = "INDIRECT"
+    INDIRECT_X = "INDIRECT_X"
+    INDIRECT_Y = "INDIRECT_Y"
+    ABSOLUTE_X = "ABSOLUTE_X"
+    ABSOLUTE_Y = "ABSOLUTE_Y"
+    ZERO_PAGE_X = "ZERO_PAGE_X"
+    ZERO_PAGE_Y = "ZERO_PAGE_Y"
 
 @dataclass
 class Instruction:
@@ -463,6 +470,8 @@ def ins_inc(state: MachineState, address : int) -> MachineState:
     value = (value + 1) & 0xFF
     proc.flag_z = (value == 0)
     proc.flag_n = (value & 0x80) != 0
+
+    proc.write_byte(mem, address, value)
 
     return MachineState(proc, mem)
 
@@ -1043,6 +1052,8 @@ instruction_table = {
     0x69: Instruction("ADC", AddressMode.IMMEDIATE, ins_adc, 2),
     0x65: Instruction("ADC", AddressMode.ZERO_PAGE, ins_adc, 3),
     0x6D: Instruction("ADC", AddressMode.ABSOLUTE, ins_adc, 4),
+    0x61: Instruction("ADC", AddressMode.INDIRECT_X, ins_adc, 6),
+    0x71: Instruction("ADC", AddressMode.INDIRECT_Y, ins_adc, 5),
 
     # AND
     0x29: Instruction("AND", AddressMode.IMMEDIATE, ins_and, 2),
@@ -1139,6 +1150,7 @@ instruction_table = {
 
     # JMP
     0x4C: Instruction("JMP", AddressMode.ABSOLUTE, ins_jmp, 3),
+    0x6C: Instruction("JMP", AddressMode.INDIRECT, ins_jmp, 5),
 
     # JSR
     0x20: Instruction("JSR", AddressMode.ABSOLUTE, ins_jsr, 6),
@@ -1147,6 +1159,11 @@ instruction_table = {
     0xA9: Instruction("LDA", AddressMode.IMMEDIATE, ins_lda, 2),
     0xA5: Instruction("LDA", AddressMode.ZERO_PAGE, ins_lda, 3),
     0xAD: Instruction("LDA", AddressMode.ABSOLUTE, ins_lda, 4),
+    0xA1: Instruction("LDA", AddressMode.INDIRECT_X, ins_lda, 6),
+    0xB1: Instruction("LDA", AddressMode.INDIRECT_Y, ins_lda, 5),
+    0xBD: Instruction("LDA", AddressMode.ABSOLUTE_X, ins_lda, 4),
+    0xB9: Instruction("LDA", AddressMode.ABSOLUTE_Y, ins_lda, 4),
+    0xB5: Instruction("LDA", AddressMode.ZERO_PAGE_X, ins_lda, 4),
 
     # LDX
     0xA2: Instruction("LDX", AddressMode.IMMEDIATE, ins_ldx, 2),
@@ -1216,6 +1233,11 @@ instruction_table = {
     # STA
     0x85: Instruction("STA", AddressMode.ZERO_PAGE, ins_sta, 3),
     0x8D: Instruction("STA", AddressMode.ABSOLUTE, ins_sta, 4),
+    0x81: Instruction("STA", AddressMode.INDIRECT_X, ins_sta, 6),
+    0x91: Instruction("STA", AddressMode.INDIRECT_Y, ins_sta, 6),
+    0x9D: Instruction("STA", AddressMode.ABSOLUTE_X, ins_sta, 5),
+    0x99: Instruction("STA", AddressMode.ABSOLUTE_Y, ins_sta, 5),
+    0x95: Instruction("STA", AddressMode.ZERO_PAGE_X, ins_sta, 4),
 
     # STX
     0x86: Instruction("STX", AddressMode.ZERO_PAGE, ins_stx, 3),

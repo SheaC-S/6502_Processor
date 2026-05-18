@@ -1051,19 +1051,29 @@ instruction_table = {
     # ADC
     0x69: Instruction("ADC", AddressMode.IMMEDIATE, ins_adc, 2),
     0x65: Instruction("ADC", AddressMode.ZERO_PAGE, ins_adc, 3),
+    0x75: Instruction("ADC", AddressMode.ZERO_PAGE_X, ins_adc, 4),
     0x6D: Instruction("ADC", AddressMode.ABSOLUTE, ins_adc, 4),
+    0x7D: Instruction("ADC", AddressMode.ABSOLUTE_X, ins_adc, 4),
+    0x79: Instruction("ADC", AddressMode.ABSOLUTE_Y, ins_adc, 4),
     0x61: Instruction("ADC", AddressMode.INDIRECT_X, ins_adc, 6),
     0x71: Instruction("ADC", AddressMode.INDIRECT_Y, ins_adc, 5),
 
     # AND
     0x29: Instruction("AND", AddressMode.IMMEDIATE, ins_and, 2),
     0x25: Instruction("AND", AddressMode.ZERO_PAGE, ins_and, 3),
+    0x35: Instruction("AND", AddressMode.ZERO_PAGE_X, ins_and, 4),
     0x2D: Instruction("AND", AddressMode.ABSOLUTE, ins_and, 4),
+    0x3D: Instruction("AND", AddressMode.ABSOLUTE_X, ins_and, 4),
+    0x39: Instruction("AND", AddressMode.ABSOLUTE_Y, ins_and, 4),
+    0x21: Instruction("AND", AddressMode.INDIRECT_X, ins_and, 6),
+    0x31: Instruction("AND", AddressMode.INDIRECT_Y, ins_and, 5),
 
     # ASL
     0x0A: Instruction("ASL", AddressMode.ACCUMULATOR, ins_asl, 2),
     0x06: Instruction("ASL", AddressMode.ZERO_PAGE, ins_asl, 5),
+    0x16: Instruction("ASL", AddressMode.ZERO_PAGE_X, ins_asl, 6),
     0x0E: Instruction("ASL", AddressMode.ABSOLUTE, ins_asl, 6),
+    0x1E: Instruction("ASL", AddressMode.ABSOLUTE_X, ins_asl, 7),
 
     # BCC
     0x90: Instruction("BCC", AddressMode.RELATIVE, ins_bcc, 2),
@@ -1094,7 +1104,7 @@ instruction_table = {
     0x50: Instruction("BVC", AddressMode.IMPLIED, ins_bvc, 2),
 
     # BVS
-    0x70: Instruction("BVS", AddressMode.IMPLIED, ins_bvc, 2),
+    0x70: Instruction("BVS", AddressMode.IMPLIED, ins_bvs, 2),
 
     # CLC
     0x18: Instruction("CLC", AddressMode.IMPLIED, ins_clc, 2),
@@ -1103,7 +1113,7 @@ instruction_table = {
     0xD8: Instruction("CLD", AddressMode.IMPLIED, ins_cld, 2),
 
     # CLI
-    0x58: Instruction("CLD", AddressMode.IMPLIED, ins_cli, 2),
+    0x58: Instruction("CLI", AddressMode.IMPLIED, ins_cli, 2),
 
     # CLV
     0xB8: Instruction("CLV", AddressMode.IMPLIED, ins_clv, 2),
@@ -1111,7 +1121,12 @@ instruction_table = {
     # CMP
     0xC9: Instruction("CMP", AddressMode.IMMEDIATE, ins_cmp, 2),
     0xC5: Instruction("CMP", AddressMode.ZERO_PAGE, ins_cmp, 3),
+    0xD5: Instruction("CMP", AddressMode.ZERO_PAGE_X, ins_cmp, 4),
     0xCD: Instruction("CMP", AddressMode.ABSOLUTE,  ins_cmp, 4),
+    0xDD: Instruction("CMP", AddressMode.ABSOLUTE_X, ins_cmp, 4),
+    0xD9: Instruction("CMP", AddressMode.ABSOLUTE_Y, ins_cmp, 4),
+    0xC1: Instruction("CMP", AddressMode.INDIRECT_X, ins_cmp, 6),
+    0xD1: Instruction("CMP", AddressMode.INDIRECT_Y, ins_cmp, 5),
 
     # CPX
     0xE0: Instruction("CPX", AddressMode.IMMEDIATE, ins_cpx, 2),
@@ -1125,7 +1140,9 @@ instruction_table = {
 
     # DEC
     0xC6: Instruction("DEC", AddressMode.ZERO_PAGE, ins_dec, 5),
+    0xD6: Instruction("DEC", AddressMode.ZERO_PAGE_X, ins_dec, 6),
     0xCE: Instruction("DEC", AddressMode.ABSOLUTE, ins_dec, 6),
+    0xDE: Instruction("DEC", AddressMode.ABSOLUTE_X, ins_dec, 7),
 
     # DEX
     0xCA: Instruction("DEX", AddressMode.IMPLIED, ins_dex, 2),
@@ -1136,11 +1153,18 @@ instruction_table = {
     # EOR
     0x49: Instruction("EOR", AddressMode.IMMEDIATE, ins_eor, 2),
     0x45: Instruction("EOR", AddressMode.ZERO_PAGE, ins_eor, 3),
+    0x55: Instruction("EOR", AddressMode.ZERO_PAGE_X, ins_eor, 4),
     0x4D: Instruction("EOR", AddressMode.ABSOLUTE, ins_eor, 4),
+    0x5D: Instruction("EOR", AddressMode.ABSOLUTE_X, ins_eor, 4),
+    0x59: Instruction("EOR", AddressMode.ABSOLUTE_Y, ins_eor, 4),
+    0x41: Instruction("EOR", AddressMode.INDIRECT_X, ins_eor, 6),
+    0x51: Instruction("EOR", AddressMode.INDIRECT_Y, ins_eor, 5),
 
     # INC
     0xE6: Instruction("INC", AddressMode.ZERO_PAGE, ins_inc, 5),
+    0xF6: Instruction("INC", AddressMode.ZERO_PAGE_X, ins_inc, 6),
     0xEE: Instruction("INC", AddressMode.ABSOLUTE, ins_inc, 6),
+    0xFE: Instruction("INC", AddressMode.ABSOLUTE_X, ins_inc, 7),
 
     # INX
     0xE8: Instruction("INX", AddressMode.IMPLIED, ins_inx, 2),
@@ -1158,27 +1182,33 @@ instruction_table = {
     # LDA
     0xA9: Instruction("LDA", AddressMode.IMMEDIATE, ins_lda, 2),
     0xA5: Instruction("LDA", AddressMode.ZERO_PAGE, ins_lda, 3),
+    0xB5: Instruction("LDA", AddressMode.ZERO_PAGE_X, ins_lda, 4),
     0xAD: Instruction("LDA", AddressMode.ABSOLUTE, ins_lda, 4),
-    0xA1: Instruction("LDA", AddressMode.INDIRECT_X, ins_lda, 6),
-    0xB1: Instruction("LDA", AddressMode.INDIRECT_Y, ins_lda, 5),
     0xBD: Instruction("LDA", AddressMode.ABSOLUTE_X, ins_lda, 4),
     0xB9: Instruction("LDA", AddressMode.ABSOLUTE_Y, ins_lda, 4),
-    0xB5: Instruction("LDA", AddressMode.ZERO_PAGE_X, ins_lda, 4),
+    0xA1: Instruction("LDA", AddressMode.INDIRECT_X, ins_lda, 6),
+    0xB1: Instruction("LDA", AddressMode.INDIRECT_Y, ins_lda, 5),
 
     # LDX
     0xA2: Instruction("LDX", AddressMode.IMMEDIATE, ins_ldx, 2),
     0xA6: Instruction("LDX", AddressMode.ZERO_PAGE, ins_ldx, 3),
+    0xB6: Instruction("LDX", AddressMode.ZERO_PAGE_Y, ins_ldx, 4),
     0xAE: Instruction("LDX", AddressMode.ABSOLUTE, ins_ldx, 4),
+    0xBE: Instruction("LDX", AddressMode.ABSOLUTE_Y, ins_ldx, 4),
 
     # LDY
     0xA0: Instruction("LDY", AddressMode.IMMEDIATE, ins_ldy, 2),
     0xA4: Instruction("LDY", AddressMode.ZERO_PAGE, ins_ldy, 3),
+    0xB4: Instruction("LDY", AddressMode.ZERO_PAGE_X, ins_ldy, 4),
     0xAC: Instruction("LDY", AddressMode.ABSOLUTE, ins_ldy, 4),
+    0xBC: Instruction("LDY", AddressMode.ABSOLUTE_X, ins_ldy, 4),
 
     # LSR
     0x4A: Instruction("LSR", AddressMode.ACCUMULATOR, ins_lsr, 2),
     0x46: Instruction("LSR", AddressMode.ZERO_PAGE, ins_lsr, 5),
+    0x56: Instruction("LSR", AddressMode.ZERO_PAGE_X, ins_lsr, 6),
     0x4E: Instruction("LSR", AddressMode.ABSOLUTE, ins_lsr, 6),
+    0x5E: Instruction("LSR", AddressMode.ABSOLUTE_X, ins_lsr, 7),
 
     # NOP
     0xEA: Instruction("NOP", AddressMode.IMPLIED, ins_nop, 2),
@@ -1186,7 +1216,12 @@ instruction_table = {
     # ORA
     0x09: Instruction("ORA", AddressMode.IMMEDIATE, ins_ora, 2),
     0x05: Instruction("ORA", AddressMode.ZERO_PAGE, ins_ora, 3),
+    0x15: Instruction("ORA", AddressMode.ZERO_PAGE_X, ins_ora, 4),
     0x0D: Instruction("ORA", AddressMode.ABSOLUTE, ins_ora, 4),
+    0x1D: Instruction("ORA", AddressMode.ABSOLUTE_X, ins_ora, 4),
+    0x19: Instruction("ORA", AddressMode.ABSOLUTE_Y, ins_ora, 4),
+    0x01: Instruction("ORA", AddressMode.INDIRECT_X, ins_ora, 6),
+    0x11: Instruction("ORA", AddressMode.INDIRECT_Y, ins_ora, 5),
 
     # PHA
     0x48: Instruction("PHA", AddressMode.IMPLIED, ins_pha, 3),
@@ -1198,17 +1233,21 @@ instruction_table = {
     0x68: Instruction("PLA", AddressMode.IMPLIED, ins_pla, 4),
 
     # PLP
-    0x28: Instruction("PLP", AddressMode.IMPLIED, ins_pla, 4),
+    0x28: Instruction("PLP", AddressMode.IMPLIED, ins_plp, 4),
 
     # ROL
     0x2A: Instruction("ROL", AddressMode.ACCUMULATOR, ins_rol, 2),
     0x26: Instruction("ROL", AddressMode.ZERO_PAGE, ins_rol, 5),
+    0x36: Instruction("ROL", AddressMode.ZERO_PAGE_X, ins_rol, 6),
     0x2E: Instruction("ROL", AddressMode.ABSOLUTE, ins_rol, 6),
+    0x3E: Instruction("ROL", AddressMode.ABSOLUTE_X, ins_rol, 7),
 
     # ROR
     0x6A: Instruction("ROR", AddressMode.ACCUMULATOR, ins_ror, 2),
     0x66: Instruction("ROR", AddressMode.ZERO_PAGE, ins_ror, 5),
+    0x76: Instruction("ROR", AddressMode.ZERO_PAGE_X, ins_ror, 6),
     0x6E: Instruction("ROR", AddressMode.ABSOLUTE, ins_ror, 6),
+    0x7E: Instruction("ROR", AddressMode.ABSOLUTE_X, ins_ror, 7),
 
     # RTI
     0x40: Instruction("RTI", AddressMode.IMPLIED, ins_rti, 6),
@@ -1219,7 +1258,12 @@ instruction_table = {
     # SBC
     0xE9: Instruction("SBC", AddressMode.IMMEDIATE, ins_sbc, 2),
     0xE5: Instruction("SBC", AddressMode.ZERO_PAGE, ins_sbc, 3),
+    0xF5: Instruction("SBC", AddressMode.ZERO_PAGE_X, ins_sbc, 4),
     0xED: Instruction("SBC", AddressMode.ABSOLUTE, ins_sbc, 4),
+    0xFD: Instruction("SBC", AddressMode.ABSOLUTE_X, ins_sbc, 4),
+    0xF9: Instruction("SBC", AddressMode.ABSOLUTE_Y, ins_sbc, 4),
+    0xE1: Instruction("SBC", AddressMode.INDIRECT_X, ins_sbc, 6),
+    0xF1: Instruction("SBC", AddressMode.INDIRECT_Y, ins_sbc, 5),
 
     # SEC
     0x38: Instruction("SEC", AddressMode.IMPLIED, ins_sec, 2),
@@ -1232,19 +1276,21 @@ instruction_table = {
 
     # STA
     0x85: Instruction("STA", AddressMode.ZERO_PAGE, ins_sta, 3),
+    0x95: Instruction("STA", AddressMode.ZERO_PAGE_X, ins_sta, 4),
     0x8D: Instruction("STA", AddressMode.ABSOLUTE, ins_sta, 4),
-    0x81: Instruction("STA", AddressMode.INDIRECT_X, ins_sta, 6),
-    0x91: Instruction("STA", AddressMode.INDIRECT_Y, ins_sta, 6),
     0x9D: Instruction("STA", AddressMode.ABSOLUTE_X, ins_sta, 5),
     0x99: Instruction("STA", AddressMode.ABSOLUTE_Y, ins_sta, 5),
-    0x95: Instruction("STA", AddressMode.ZERO_PAGE_X, ins_sta, 4),
+    0x81: Instruction("STA", AddressMode.INDIRECT_X, ins_sta, 6),
+    0x91: Instruction("STA", AddressMode.INDIRECT_Y, ins_sta, 6),
 
     # STX
     0x86: Instruction("STX", AddressMode.ZERO_PAGE, ins_stx, 3),
+    0x96: Instruction("STX", AddressMode.ZERO_PAGE_Y, ins_stx, 4),
     0x8E: Instruction("STX", AddressMode.ABSOLUTE, ins_stx, 4),
 
     # STY
     0x84: Instruction("STY", AddressMode.ZERO_PAGE, ins_sty, 3),
+    0x94: Instruction("STY", AddressMode.ZERO_PAGE_X, ins_sty, 4),
     0x8C: Instruction("STY", AddressMode.ABSOLUTE, ins_sty, 4),
 
     # TAX
